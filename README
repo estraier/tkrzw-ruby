@@ -1,0 +1,20 @@
+===============================================================
+ Ruby interface of Tkrzw
+================================================================
+
+Please read the following documents.
+
+  COPYING           - license
+  CONTRIBUTING.md   - how to contribute
+
+To build the library, Ruby 2.5 or later version is required.
+Then, run these commands.
+
+  ruby extconf.rb
+  make
+  ruby check.rb
+  sudo make install
+
+Thanks.
+
+== END OF FILE ==
