@@ -2,6 +2,15 @@
 
 require 'rbconfig'
 
+ldpath = ENV['LD_LIBRARY_PATH']
+ldpaths = []
+if ldpath
+then
+  ldpaths.push(ldpath)
+end
+ldpaths.push('/usr/local/lib')
+ENV['LD_LIBRARY_PATH'] = ldpaths.join(':')
+
 commands = [
   'test.rb -v',
   'perf.rb --path casket.tkh --params "num_buckets=100000" --iter 20000 --threads 5',
