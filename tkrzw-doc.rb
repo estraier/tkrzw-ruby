@@ -349,7 +349,7 @@ module Tkrzw
     # Synchronizes the content of the database to the file system.
     # @param hard True to do physical synchronization with the hardware or false to do only logical synchronization with the file system.
     # @param params Optional parameters of a hash object.
-    # Only SkipDBM uses the optional parameters.  The "reducer" parameter specifies the reducer to apply to records of the same key.  "ReduceToFirst", "ReduceToSecond", "ReduceToLast", etc are supported.
+    # Only SkipDBM uses the optional parameters.  The "merge" parameter specifies paths of databases to merge, separated by colon.  The "reducer" parameter specifies the reducer to apply to records of the same key.  "ReduceToFirst", "ReduceToSecond", "ReduceToLast", etc are supported.
     def synchronize(hard, params={})
       # (native code)
     end
