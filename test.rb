@@ -28,6 +28,12 @@ class TkrzwTest < Test::Unit::TestCase
   # Utility tests.
   def test_utility
     assert_match(/^\d+\.\d+\.\d+$/ , Utility::VERSION)
+    assert_equal(-2 ** 31, Utility::INT32MIN)
+    assert_equal(2 ** 31 - 1, Utility::INT32MAX)
+    assert_equal(2 ** 32 - 1, Utility::UINT32MAX)
+    assert_equal(-2 ** 63, Utility::INT64MIN)
+    assert_equal(2 ** 63 - 1, Utility::INT64MAX)
+    assert_equal(2 ** 64 - 1, Utility::UINT64MAX)
     assert_true(Utility.get_memory_usage > 0)
     assert_equal(3042090208, Utility.primary_hash("abc", (1 << 32) - 1))
     assert_equal(16973900370012003622, Utility.primary_hash("abc"))
@@ -257,6 +263,9 @@ class TkrzwTest < Test::Unit::TestCase
       assert_equal(0, export_dbm.to_i)
       assert_equal(Status::SUCCESS, export_dbm.set("1", "100"))
       value = export_dbm.increment("10000", 2, 10000, status)
+      assert_equal(Status::SUCCESS, status)
+      assert_equal(value, 10002)
+      value = export_dbm.increment("10000", Utility::INT64MIN, 0, status)
       assert_equal(Status::SUCCESS, status)
       assert_equal(value, 10002)
       assert_equal(Status::DUPLICATION_ERROR, export_dbm.set("1", "101", false))

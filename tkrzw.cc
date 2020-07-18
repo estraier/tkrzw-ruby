@@ -267,6 +267,12 @@ static VALUE util_edit_distance_lev(int argc, VALUE* argv, VALUE vself) {
 static void DefineUtility() {
   cls_util = rb_define_class_under(mod_tkrzw, "Utility", rb_cObject);
   rb_define_const(cls_util, "VERSION", rb_str_new2(tkrzw::PACKAGE_VERSION));
+  rb_define_const(cls_util, "INT32MIN", LL2NUM(tkrzw::INT32MIN));
+  rb_define_const(cls_util, "INT32MAX", LL2NUM(tkrzw::INT32MAX));
+  rb_define_const(cls_util, "UINT32MAX", ULL2NUM(tkrzw::UINT32MAX));
+  rb_define_const(cls_util, "INT64MIN", LL2NUM(tkrzw::INT64MIN));
+  rb_define_const(cls_util, "INT64MAX", LL2NUM(tkrzw::INT64MAX));
+  rb_define_const(cls_util, "UINT64MAX", ULL2NUM(tkrzw::UINT64MAX));
   rb_define_singleton_method(cls_util, "get_memory_usage", (METHOD)util_get_memory_usage, 0);
   rb_define_singleton_method(cls_util, "primary_hash", (METHOD)util_primary_hash, -1);
   rb_define_singleton_method(cls_util, "secondary_hash", (METHOD)util_secondary_hash, -1);

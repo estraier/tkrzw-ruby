@@ -11,7 +11,18 @@ module Tkrzw
   class Utility
     # The package version numbers.
     VERSION = "0.0.0"
-
+    # The minimum value of int32.
+    INT32MIN = -2 ** 31
+    # The maximum value of int32.
+    INT32MAX = 2 ** 31 - 1
+    # The maximum value of uint32.
+    UINT32MAX = 2 ** 32 - 1
+    # The minimum value of int64.
+    INT64MIN = -2 ** 63
+    # The maximum value of int64.
+    INT64MAX = 2 ** 63 - 1
+    # The maximum value of uint64.
+    UINT64MAX = 2 ** 64 - 1
     # Gets the current memory usage of the process.
     def self.get_memory_usage()
       # (native code)
@@ -299,7 +310,7 @@ module Tkrzw
 
     # Increments the numeric value of a record.
     # @param key The key of the record.
-    # @param inc The incremental value.
+    # @param inc The incremental value.  If it is Utility::INT64MIN, the current value is not changed and a new record is not created.
     # @param init The initial value.
     # @param status A status object to which the result status is assigned.  It can be omitted.
     # @return The current value, or nil on failure.
