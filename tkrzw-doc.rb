@@ -197,7 +197,7 @@ module Tkrzw
     # @param params Optional parameters of a hash object.
     # @return The result status.
     # The extension of the path indicates the type of the database.
-    # - .thh : File hash database (HashDBM)
+    # - .tkh : File hash database (HashDBM)
     # - .tkt : File tree database (TreeDBM)
     # - .tks : File skip database (SkipDBM)
     # - .tkmt : On-memory hash database (TinyDBM)
