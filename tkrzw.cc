@@ -693,6 +693,64 @@ static VALUE dbm_set_multi(int argc, VALUE* argv, VALUE vself) {
   return MakeStatusValue(std::move(status));
 }
 
+// Implementation of DBM#set_and_get.
+static VALUE dbm_set_and_get(int argc, VALUE* argv, VALUE vself) {
+  StructDBM* sdbm = nullptr;
+  Data_Get_Struct(vself, StructDBM, sdbm);
+  if (sdbm->dbm == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened database");
+  }
+  volatile VALUE vkey, vvalue, voverwrite;
+  rb_scan_args(argc, argv, "21", &vkey, &vvalue, &voverwrite);
+  vkey = StringValueEx(vkey);
+  const std::string_view key = GetStringView(vkey);
+  vvalue = StringValueEx(vvalue);
+  const std::string_view value = GetStringView(vvalue);
+  const bool overwrite = argc > 2 ? RTEST(voverwrite) : true;
+  tkrzw::Status impl_status(tkrzw::Status::SUCCESS);
+  std::string old_value;
+  bool hit = false;
+  class Processor final : public tkrzw::DBM::RecordProcessor {
+   public:
+    Processor(tkrzw::Status* status, std::string_view value, bool overwrite,
+              std::string* old_value, bool* hit)
+        : status_(status), value_(value), overwrite_(overwrite),
+          old_value_(old_value), hit_(hit) {}
+    std::string_view ProcessFull(std::string_view key, std::string_view value) override {
+      *old_value_ = value;
+      *hit_ = true;
+      if (overwrite_) {
+        return value_;
+      }
+      status_->Set(tkrzw::Status::DUPLICATION_ERROR);
+      return NOOP;
+    }
+    std::string_view ProcessEmpty(std::string_view key) override {
+      return value_;
+    }
+   private:
+    tkrzw::Status* status_;
+    std::string_view value_;
+    bool overwrite_;
+    std::string* old_value_;
+    bool* hit_;
+  };
+  Processor proc(&impl_status, value, overwrite, &old_value, &hit);
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sdbm->concurrent, [&]() {
+      status = sdbm->dbm->Process(key, &proc, true);
+    });
+  status |= impl_status;
+  volatile VALUE vpair = rb_ary_new2(2);
+  rb_ary_push(vpair, MakeStatusValue(std::move(status)));
+  if (hit) {
+    rb_ary_push(vpair, MakeString(old_value, sdbm->venc));
+  } else {
+    rb_ary_push(vpair, Qnil);
+  }
+  return vpair;
+}
+
 // Implementation of DBM#remove.
 static VALUE dbm_remove(VALUE vself, VALUE vkey) {
   StructDBM* sdbm = nullptr;
@@ -1215,6 +1273,7 @@ static void DefineDBM() {
   rb_define_method(cls_dbm, "get_multi", (METHOD)dbm_get_multi, -2);
   rb_define_method(cls_dbm, "set", (METHOD)dbm_set, -1);
   rb_define_method(cls_dbm, "set_multi", (METHOD)dbm_set_multi, -1);
+  rb_define_method(cls_dbm, "set_and_get", (METHOD)dbm_set_and_get, -1);
   rb_define_method(cls_dbm, "remove", (METHOD)dbm_remove, 1);
   rb_define_method(cls_dbm, "append", (METHOD)dbm_append, -1);
   rb_define_method(cls_dbm, "compare_exchange", (METHOD)dbm_compare_exchange, 3);

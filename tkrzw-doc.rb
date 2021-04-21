@@ -270,7 +270,7 @@ module Tkrzw
     # @param value The value of the record.
     # @param overwrite Whether to overwrite the existing value.  It can be omitted and then false is set.
     # @return The result status.
-    def set(key, value, overwrite=false)
+    def set(key, value, overwrite=true)
       # (native code)
     end
 
@@ -280,7 +280,16 @@ module Tkrzw
     def set_multi(records = {})
       # (native code)
     end
-  
+
+    # Sets a record and get the old value.
+    # @param key The key of the record.
+    # @param value The value of the record.
+    # @param overwrite Whether to overwrite the existing value if there's a record with the same key.  If true, the existing value is overwritten by the new value.  If false, the operation is given up and an error status is returned.
+    # @return A pair of the result status and the old value.  If the record has not existed when inserting the new record, nil is assigned as the value.
+    def set_and_get(key, value, overwrite=true)
+      # (native code)
+    end
+
     # Removes a record of a key.
     # @param key The key of the record.
     # @return The result status.

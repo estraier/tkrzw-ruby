@@ -136,7 +136,8 @@ class TkrzwTest < Test::Unit::TestCase
       open_params[:encoding] = "UTF-8"
       assert_equal(Status::SUCCESS, dbm.open(path, true, open_params))
       inspect = dbm.inspect_details
-      assert_equal(conf[:expected_class], inspect["class"])
+      class_name = inspect["class"]
+      assert_equal(conf[:expected_class], class_name)
       (0...20).each do |i|
         key = "%08d" % i
         value = "%d" % i
@@ -154,7 +155,7 @@ class TkrzwTest < Test::Unit::TestCase
       end
       assert_true(dbm.open?)
       assert_true(dbm.healthy?)
-      if ["TreeDBM", "SkipDBM", "BabyDBM", "StdTreeDBM"].include?(inspect["class"])
+      if ["TreeDBM", "SkipDBM", "BabyDBM", "StdTreeDBM"].include?(class_name)
         assert_true(dbm.ordered?)
       else
         assert_false(dbm.ordered?)
@@ -172,6 +173,19 @@ class TkrzwTest < Test::Unit::TestCase
           assert_true(status == Status::DUPLICATION_ERROR)
         end
       end
+      sv = dbm.set_and_get("98765", "apple", false)
+      assert_equal(Status::SUCCESS, sv[0])
+      assert_equal(nil, sv[1])
+      if ["TreeDBM", "TreeDBM", "TinyDBM", "BabyDBM"].include?(class_name)
+        sv = dbm.set_and_get("98765", "orange", false)
+        assert_equal(Status::DUPLICATION_ERROR, sv[0])
+        assert_equal("apple", sv[1])
+        sv = dbm.set_and_get("98765", "orange", true)
+        assert_equal(Status::SUCCESS, sv[0])
+        assert_equal("apple", sv[1])
+        assert_equal("orange", dbm.get("98765"))
+      end
+      assert_equal(Status::SUCCESS, dbm.remove("98765"))
       assert_equal(Status::SUCCESS, dbm.synchronize(false, conf[:synchronize_params]))
       records = {}
       (0...20).each do |i|
