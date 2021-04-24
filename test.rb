@@ -184,6 +184,13 @@ class TkrzwTest < Test::Unit::TestCase
         assert_equal(Status::SUCCESS, sv[0])
         assert_equal("apple", sv[1])
         assert_equal("orange", dbm.get("98765"))
+        sv = dbm.remove_and_get("98765")
+        assert_equal(Status::SUCCESS, sv[0])
+        assert_equal("orange", sv[1])
+        sv = dbm.remove_and_get("98765")
+        assert_equal(Status::NOT_FOUND_ERROR, sv[0])
+        assert_equal(nil, sv[1])
+        assert_equal(Status::SUCCESS, dbm.set("98765", "banana"))
       end
       assert_equal(Status::SUCCESS, dbm.remove("98765"))
       assert_equal(Status::SUCCESS, dbm.synchronize(false, conf[:synchronize_params]))

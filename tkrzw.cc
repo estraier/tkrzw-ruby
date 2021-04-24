@@ -767,6 +767,49 @@ static VALUE dbm_remove(VALUE vself, VALUE vkey) {
   return MakeStatusValue(std::move(status));
 }
 
+// Implementation of DBM#remove_and_get.
+static VALUE dbm_remove_and_get(VALUE vself, VALUE vkey) {
+  StructDBM* sdbm = nullptr;
+  Data_Get_Struct(vself, StructDBM, sdbm);
+  if (sdbm->dbm == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened database");
+  }
+  vkey = StringValueEx(vkey);
+  const std::string_view key = GetStringView(vkey);
+  tkrzw::Status impl_status(tkrzw::Status::SUCCESS);
+  std::string old_value;
+  class Processor final : public tkrzw::DBM::RecordProcessor {
+   public:
+    Processor(tkrzw::Status* status, std::string* old_value)
+        : status_(status), old_value_(old_value) {}
+    std::string_view ProcessFull(std::string_view key, std::string_view value) override {
+      *old_value_ = value;
+      return REMOVE;
+    }
+    std::string_view ProcessEmpty(std::string_view key) override {
+      status_->Set(tkrzw::Status::NOT_FOUND_ERROR);
+      return NOOP;
+    }
+   private:
+    tkrzw::Status* status_;
+    std::string* old_value_;
+  };
+  Processor proc(&impl_status, &old_value);
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sdbm->concurrent, [&]() {
+      status = sdbm->dbm->Process(key, &proc, true);
+    });
+  status |= impl_status;
+  volatile VALUE vpair = rb_ary_new2(2);
+  rb_ary_push(vpair, MakeStatusValue(std::move(status)));
+  if (status == tkrzw::Status::SUCCESS) {
+    rb_ary_push(vpair, MakeString(old_value, sdbm->venc));
+  } else {
+    rb_ary_push(vpair, Qnil);
+  }
+  return vpair;
+}
+
 // Implementation of DBM#append.
 static VALUE dbm_append(int argc, VALUE* argv, VALUE vself) {
   StructDBM* sdbm = nullptr;
@@ -1275,6 +1318,7 @@ static void DefineDBM() {
   rb_define_method(cls_dbm, "set_multi", (METHOD)dbm_set_multi, -1);
   rb_define_method(cls_dbm, "set_and_get", (METHOD)dbm_set_and_get, -1);
   rb_define_method(cls_dbm, "remove", (METHOD)dbm_remove, 1);
+  rb_define_method(cls_dbm, "remove_and_get", (METHOD)dbm_remove_and_get, 1);
   rb_define_method(cls_dbm, "append", (METHOD)dbm_append, -1);
   rb_define_method(cls_dbm, "compare_exchange", (METHOD)dbm_compare_exchange, 3);
   rb_define_method(cls_dbm, "increment", (METHOD)dbm_increment, -1);

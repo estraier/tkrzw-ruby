@@ -297,6 +297,13 @@ module Tkrzw
       # (native code)
     end
 
+    # Removes a record and get the value.
+    # @param key The key of the record.
+    # @return A pair of the result status and the record value.  If the record does not exist, nil is assigned as the value.
+    def remove_and_get(key)
+      # (native code)
+    end
+
     # Appends data at the end of a record of a key.
     # @param key The key of the record.
     # @param value The value to append.
