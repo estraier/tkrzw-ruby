@@ -997,8 +997,8 @@ static VALUE dbm_synchronize(int argc, VALUE* argv, VALUE vself) {
   return MakeStatusValue(std::move(status));
 }
 
-// Implementation of DBM#copy_file.
-static VALUE dbm_copy_file(VALUE vself, VALUE vdestpath) {
+// Implementation of DBM#copy_file_data.
+static VALUE dbm_copy_file_data(VALUE vself, VALUE vdestpath) {
   StructDBM* sdbm = nullptr;
   Data_Get_Struct(vself, StructDBM, sdbm);
   if (sdbm->dbm == nullptr) {
@@ -1008,7 +1008,7 @@ static VALUE dbm_copy_file(VALUE vself, VALUE vdestpath) {
   const std::string_view dest_path = GetStringView(vdestpath);
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(sdbm->concurrent, [&]() {
-      status = sdbm->dbm->CopyFile(std::string(dest_path));
+      status = sdbm->dbm->CopyFileData(std::string(dest_path));
     });
   return MakeStatusValue(std::move(status));
 }
@@ -1329,7 +1329,7 @@ static void DefineDBM() {
   rb_define_method(cls_dbm, "rebuild", (METHOD)dbm_rebuild, -1);
   rb_define_method(cls_dbm, "should_be_rebuilt?", (METHOD)dbm_should_be_rebuilt, 0);
   rb_define_method(cls_dbm, "synchronize", (METHOD)dbm_synchronize, -1);
-  rb_define_method(cls_dbm, "copy_file", (METHOD)dbm_copy_file, 1);
+  rb_define_method(cls_dbm, "copy_file_data", (METHOD)dbm_copy_file_data, 1);
   rb_define_method(cls_dbm, "export", (METHOD)dbm_export, 1);
   rb_define_method(cls_dbm, "export_keys_as_lines", (METHOD)dbm_export_keys_as_lines, 1);
   rb_define_method(cls_dbm, "inspect_details", (METHOD)dbm_inspect_details, 0);

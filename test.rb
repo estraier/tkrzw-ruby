@@ -253,7 +253,7 @@ class TkrzwTest < Test::Unit::TestCase
         dir, base = File.split(path)
         ext = File.extname(base)
         copy_path = File.join(dir, File.basename(path, ext) + "-copy" + ext)
-        assert_equal(Status::SUCCESS, dbm.copy_file(copy_path))
+        assert_equal(Status::SUCCESS, dbm.copy_file_data(copy_path))
         copy_dbm = DBM.new
         if path.index(".")
           assert_equal(Status::SUCCESS, copy_dbm.open(copy_path, false))
