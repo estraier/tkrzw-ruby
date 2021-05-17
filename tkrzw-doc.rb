@@ -240,6 +240,9 @@ module Tkrzw
     # For CacheDBM, these optional parameters are supported.
     # - cap_rec_num (int): The maximum number of records.
     # - cap_mem_size (int): The total memory size to use.
+    # For the file "PositionalParallelFile" and "PositionalAtomicFile", these optional parameters are supported.
+    # - block_size (int): The block size to which all blocks should be aligned.
+    # - access_options (str): Values separated by colon.  "direct" for direct I/O.  "sync" for synchrnizing I/O, "padding" for file size alignment by padding, "pagecache" for the mini page cache in the process.
     # If the optional parameter "num_shards" is set, the database is sharded into multiple shard files.  Each file has a suffix like "-00003-of-00015".  If the value is 0, the number of shards is set by patterns of the existing files, or 1 if they doesn't exist.
     def open(path, writable, params = {})
       # (native code)
