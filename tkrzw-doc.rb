@@ -208,35 +208,36 @@ module Tkrzw
     # The optional parameters can include an option for the concurrency tuning.  By default, database operatins are done under the GVL (Global Virtual-machine Lock), which means that database operations are not done concurrently even if you use multiple threads.  If the "concurrent" parameter is true, database operations are done outside the GVL, which means that database operations can be done concurrently if you use multiple threads.  However, the downside is that swapping thread data is costly so the actual throughput is often worse in the concurrent mode than in the normal mode.  Therefore, the concurrent mode should be used only if the database is huge and it can cause blocking of threads in multi-thread usage.<br>
     # By default, the encoding of retrieved record data by the "get" method is implicitly set as "ASCII-8BIT".  If you want to change the implicit encoding to "UTF-8" or others, set the encoding name as the value of the "encoding" parameter.
     # The optional parameters can include options for the file opening operation.
-    # - truncate (bool) True to truncate the file.
-    # - no_create (bool) True to omit file creation.
-    # - no_wait (bool) True to fail if the file is locked by another process.
-    # - no_lock (bool) True to omit file locking.
+    # - truncate (bool): True to truncate the file.
+    # - no_create (bool): True to omit file creation.
+    # - no_wait (bool): True to fail if the file is locked by another process.
+    # - no_lock (bool): True to omit file locking.
     # The optional parameter "dbm" supercedes the decision of the database type by the extension.  The value is the type name: "HashDBM", "TreeDBM", "SkipDBM", "TinyDBM", "BabyDBM", "CacheDBM", "StdHashDBM", "StdTreeDBM".<br>
     # The optional parameter "file" specifies the internal file implementation class.  The default file class is "MemoryMapAtomicFile".  The other supported classes are "StdFile", "MemoryMapAtomicFile", "PositionalParallelFile", and "PositionalAtomicFile".<br>
     # For HashDBM, these optional parameters are supported.
-    # - update_mode (string) How to update the database file: "UPDATE_IN_PLACE" for the in-palce and "UPDATE_APPENDING" for the appending mode.
-    # - offset_width (int) The width to represent the offset of records.
-    # - align_pow (int) The power to align records.
-    # - num_buckets (int) The number of buckets for hashing.
-    # - fbp_capacity (int) The capacity of the free block pool.
+    # - update_mode (string): How to update the database file: "UPDATE_IN_PLACE" for the in-palce and "UPDATE_APPENDING" for the appending mode.
+    # - offset_width (int): The width to represent the offset of records.
+    # - align_pow (int): The power to align records.
+    # - num_buckets (int): The number of buckets for hashing.
+    # - fbp_capacity (int): The capacity of the free block pool.
+    # - min_read_size (int): The minimum reading size to read a record.
     # - lock_mem_buckets (bool): True to lock the memory for the hash buckets.
     # For TreeDBM, all optional parameters for HashDBM are available.  In addition, these optional parameters are supported.
-    # - max_page_size (int) The maximum size of a page.
-    # - max_branches (int) The maximum number of branches each inner node can have.
-    # - max_cached_pages (int) The maximum number of cached pages.
-    # - key_comparator (string) The comparator of record keys: "LexicalKeyComparator" for the lexical order, "LexicalCaseKeyComparator" for the lexical order ignoring case, "DecimalKeyComparator" for the order of the decimal integer numeric expressions, "HexadecimalKeyComparator" for the order of the hexadecimal integer numeric expressions, "RealNumberKeyComparator" for the order of the decimal real number expressions.
+    # - max_page_size (int): The maximum size of a page.
+    # - max_branches (int): The maximum number of branches each inner node can have.
+    # - max_cached_pages (int): The maximum number of cached pages.
+    # - key_comparator (string): The comparator of record keys: "LexicalKeyComparator" for the lexical order, "LexicalCaseKeyComparator" for the lexical order ignoring case, "DecimalKeyComparator" for the order of the decimal integer numeric expressions, "HexadecimalKeyComparator" for the order of the hexadecimal integer numeric expressions, "RealNumberKeyComparator" for the order of the decimal real number expressions.
     # For SkipDBM, these optional parameters are supported.
-    # - offset_width (int) The width to represent the offset of records.
-    # - step_unit (int) The step unit of the skip list.
-    # - max_level (int) The maximum level of the skip list.
-    # - sort_mem_size (int) The memory size used for sorting to build the database in the at-random mode.
-    # - insert_in_order (bool) If true, records are assumed to be inserted in ascending order of the key.
-    # - max_cached_records (int) The maximum number of cached records.
+    # - offset_width (int): The width to represent the offset of records.
+    # - step_unit (int): The step unit of the skip list.
+    # - max_level (int): The maximum level of the skip list.
+    # - sort_mem_size (int): The memory size used for sorting to build the database in the at-random mode.
+    # - insert_in_order (bool): If true, records are assumed to be inserted in ascending order of the key.
+    # - max_cached_records (int): The maximum number of cached records.
     # For TinyDBM, these optional parameters are supported.
-    # - num_buckets (int) The number of buckets for hashing.
+    # - num_buckets (int): The number of buckets for hashing.
     # For BabyDBM, these optional parameters are supported.
-    # - key_comparator (string) The comparator of record keys. The same ones as TreeDBM.
+    # - key_comparator (string): The comparator of record keys. The same ones as TreeDBM.
     # For CacheDBM, these optional parameters are supported.
     # - cap_rec_num (int): The maximum number of records.
     # - cap_mem_size (int): The total memory size to use.
