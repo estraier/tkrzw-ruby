@@ -642,9 +642,10 @@ static VALUE dbm_get_multi(VALUE vself, VALUE vkeys) {
     vkey = StringValueEx(vkey);
     keys.emplace_back(std::string(RSTRING_PTR(vkey), RSTRING_LEN(vkey)));
   }
+  std::vector<std::string_view> key_views(keys.begin(), keys.end());
   std::map<std::string, std::string> records;
   NativeFunction(sdbm->concurrent, [&]() {
-      records = sdbm->dbm->GetMulti(keys);
+      records = sdbm->dbm->GetMulti(key_views);
     });
   volatile VALUE vhash = rb_hash_new();
   for (const auto& record : records) {
@@ -686,9 +687,14 @@ static VALUE dbm_set_multi(int argc, VALUE* argv, VALUE vself) {
   volatile VALUE vrecords;
   rb_scan_args(argc, argv, "1", &vrecords);
   const auto& records = HashToMap(vrecords);
+  std::map<std::string_view, std::string_view> record_views;
+  for (const auto& record : records) {
+    record_views.emplace(std::make_pair(
+        std::string_view(record.first), std::string_view(record.second)));
+  }
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(sdbm->concurrent, [&]() {
-      status = sdbm->dbm->SetMulti(records);
+      status = sdbm->dbm->SetMulti(record_views);
     });
   return MakeStatusValue(std::move(status));
 }
@@ -763,6 +769,28 @@ static VALUE dbm_remove(VALUE vself, VALUE vkey) {
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(sdbm->concurrent, [&]() {
       status = sdbm->dbm->Remove(key);
+    });
+  return MakeStatusValue(std::move(status));
+}
+
+// Implementation of DBM#remove_multi.
+static VALUE dbm_remove_multi(VALUE vself, VALUE vkeys) {
+  StructDBM* sdbm = nullptr;
+  Data_Get_Struct(vself, StructDBM, sdbm);
+  if (sdbm->dbm == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened database");
+  }
+  std::vector<std::string> keys;
+  const int32_t num_keys = RARRAY_LEN(vkeys);
+  for (int32_t i = 0; i < num_keys; i++) {
+    volatile VALUE vkey = rb_ary_entry(vkeys, i);
+    vkey = StringValueEx(vkey);
+    keys.emplace_back(std::string(RSTRING_PTR(vkey), RSTRING_LEN(vkey)));
+  }
+  std::vector<std::string_view> key_views(keys.begin(), keys.end());
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sdbm->concurrent, [&]() {
+      status = sdbm->dbm->RemoveMulti(key_views);
     });
   return MakeStatusValue(std::move(status));
 }
@@ -1318,6 +1346,7 @@ static void DefineDBM() {
   rb_define_method(cls_dbm, "set_multi", (METHOD)dbm_set_multi, -1);
   rb_define_method(cls_dbm, "set_and_get", (METHOD)dbm_set_and_get, -1);
   rb_define_method(cls_dbm, "remove", (METHOD)dbm_remove, 1);
+  rb_define_method(cls_dbm, "remove_multi", (METHOD)dbm_remove_multi, -2);
   rb_define_method(cls_dbm, "remove_and_get", (METHOD)dbm_remove_and_get, 1);
   rb_define_method(cls_dbm, "append", (METHOD)dbm_append, -1);
   rb_define_method(cls_dbm, "compare_exchange", (METHOD)dbm_compare_exchange, 3);

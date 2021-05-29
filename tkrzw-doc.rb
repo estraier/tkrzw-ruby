@@ -302,6 +302,13 @@ module Tkrzw
       # (native code)
     end
 
+    # Removes records of keys.
+    # @param key The keys of the records.
+    # @return The result status.
+    def remove_multi(keys)
+      # (native code)
+    end
+
     # Removes a record and get the value.
     # @param key The key of the record.
     # @return A pair of the result status and the record value.  If the record does not exist, nil is assigned as the value.

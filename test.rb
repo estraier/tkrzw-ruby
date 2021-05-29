@@ -311,11 +311,23 @@ class TkrzwTest < Test::Unit::TestCase
       assert_equal("defg", export_dbm["abc"])
       export_dbm.remove("abc")
       assert_equal(nil, export_dbm["abc"])
-      assert_equal(Status::SUCCESS, export_dbm.set_multi(one: "first", two: "second"))
+      assert_equal(Status::SUCCESS,
+                   export_dbm.set_multi(one: "first", two: "second", three: "third"))
       ret_records = export_dbm.get_multi("one", "two")
       assert_equal("first", ret_records["one"])
       assert_equal("second", ret_records["two"])
       assert_equal(nil, ret_records["third"])
+      assert_equal(Status::SUCCESS, export_dbm.remove_multi("one", "two"))
+      assert_equal(Status::NOT_FOUND_ERROR, export_dbm.remove_multi("two", "three"))
+      status = Status.new
+      assert_equal(nil, export_dbm.get("one", status))
+      assert_equal(Status::NOT_FOUND_ERROR, status)
+      status = Status.new
+      assert_equal(nil, export_dbm.get("two", status))
+      assert_equal(Status::NOT_FOUND_ERROR, status)
+      status = Status.new
+      assert_equal(nil, export_dbm.get("three", status))
+      assert_equal(Status::NOT_FOUND_ERROR, status)
       assert_equal(Status::SUCCESS, export_dbm.close)
       export_dbm.destruct
       assert_equal(Status::SUCCESS, dbm.close)
