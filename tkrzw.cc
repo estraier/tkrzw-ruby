@@ -868,9 +868,12 @@ static VALUE dbm_compare_exchange(VALUE vself, VALUE vkey, VALUE vexpected, VALU
     rb_raise(rb_eRuntimeError, "not opened database");
   }
   vkey = StringValueEx(vkey);
-  vexpected = StringValueEx(vexpected);
   const std::string_view key = GetStringView(vkey);
-  const std::string_view expected = GetStringView(vexpected);
+  std::string_view expected;
+  if (vexpected != Qnil) {
+    vexpected = StringValueEx(vexpected);
+    expected = GetStringView(vexpected);
+  }
   std::string_view desired;
   if (vdesired != Qnil) {
     vdesired = StringValueEx(vdesired);
