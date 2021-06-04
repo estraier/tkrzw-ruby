@@ -215,10 +215,11 @@ module Tkrzw
     # The optional parameter "dbm" supercedes the decision of the database type by the extension.  The value is the type name: "HashDBM", "TreeDBM", "SkipDBM", "TinyDBM", "BabyDBM", "CacheDBM", "StdHashDBM", "StdTreeDBM".<br>
     # The optional parameter "file" specifies the internal file implementation class.  The default file class is "MemoryMapAtomicFile".  The other supported classes are "StdFile", "MemoryMapAtomicFile", "PositionalParallelFile", and "PositionalAtomicFile".<br>
     # For HashDBM, these optional parameters are supported.
-    # - update_mode (string): How to update the database file: "UPDATE_IN_PLACE" for the in-palce and "UPDATE_APPENDING" for the appending mode.
+    # - update_mode (string): How to update the database file: "UPDATE_IN_PLACE" for the in-palce or "UPDATE_APPENDING" for the appending mode.
     # - offset_width (int): The width to represent the offset of records.
     # - align_pow (int): The power to align records.
     # - num_buckets (int): The number of buckets for hashing.
+    # - restore_mode (string): How to restore the database file: "RESTORE_SYNC" to restore to the last synchronized state or "RESTORE_NOOP" to do nothing make the database read-only.  By default, as many records as possible are restored.
     # - fbp_capacity (int): The capacity of the free block pool.
     # - min_read_size (int): The minimum reading size to read a record.
     # - lock_mem_buckets (bool): True to lock the memory for the hash buckets.
@@ -231,6 +232,7 @@ module Tkrzw
     # - offset_width (int): The width to represent the offset of records.
     # - step_unit (int): The step unit of the skip list.
     # - max_level (int): The maximum level of the skip list.
+    # - restore_mode (string): How to restore the database file: "RESTORE_SYNC" to restore to the last synchronized state or "RESTORE_NOOP" to do nothing make the database read-only.  By default, as many records as possible are restored.
     # - sort_mem_size (int): The memory size used for sorting to build the database in the at-random mode.
     # - insert_in_order (bool): If true, records are assumed to be inserted in ascending order of the key.
     # - max_cached_records (int): The maximum number of cached records.
@@ -343,6 +345,14 @@ module Tkrzw
     # @return The current value, or nil on failure.
     # The record value is stored as an 8-byte big-endian integer.  Negative is also supported.
     def increment(key, inc=1, init=0, status=nil)
+      # (native code)
+    end
+
+    # Compares the values of records and exchanges if the condition meets.
+    # @param expected An array of pairs of the record keys and their expected values.  If the value is nil, no existing record is expected.
+    # @param desired An array of pairs of the record keys and their desired values.  If the value is nil, the record is to be removed.
+    # @return The result status.  If the condition doesn't meet, INFEASIBLE_ERROR is returned.
+    def compare_exchange_multi(expected, desired)
       # (native code)
     end
 

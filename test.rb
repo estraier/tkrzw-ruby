@@ -301,6 +301,35 @@ class TkrzwTest < Test::Unit::TestCase
       assert_equal(Status::INFEASIBLE_ERROR, export_dbm.compare_exchange("1", nil, "yyy"))
       assert_equal("zzz", export_dbm.get("1", status))
       assert_equal(Status::SUCCESS, export_dbm.compare_exchange("1", "zzz", nil))
+
+
+      assert_equal(Status::SUCCESS, export_dbm.compare_exchange_multi(
+                     [["hop", nil], ["step", nil]],
+                     [["hop", "one"], ["step", "two"]]))
+      assert_equal("one", export_dbm.get("hop"))
+      assert_equal("two", export_dbm.get("step"))
+      assert_equal(Status::INFEASIBLE_ERROR, export_dbm.compare_exchange_multi(
+                     [["hop", "one"], ["step", nil]],
+                     [["hop", "uno"], ["step", "dos"]]))
+      assert_equal("one", export_dbm.get("hop"))
+      assert_equal("two", export_dbm.get("step"))
+      assert_equal(Status::SUCCESS, export_dbm.compare_exchange_multi(
+                       [["hop", "one"], ["step", "two"]],
+                       [["hop", "1"], ["step", "2"]]))
+      assert_equal("1", export_dbm.get("hop"))
+      assert_equal("2", export_dbm.get("step"))
+      assert_equal(Status::SUCCESS, export_dbm.compare_exchange_multi(
+                       [["hop", "1"], ["step", "2"]],
+                       [["hop", nil], ["step", nil]]))
+      assert_equal(nil, export_dbm.get("hop"))
+      assert_equal(nil, export_dbm.get("step"))
+
+      
+
+
+
+
+      
       iter = export_dbm.make_iterator
       assert_equal(Status::SUCCESS, iter.first)
       assert_equal(Status::SUCCESS, iter.set("foobar"))

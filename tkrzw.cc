@@ -139,6 +139,29 @@ static std::map<std::string, std::string> HashToMap(VALUE vhash) {
   return map;
 }
 
+// Extracts a list of pairs of string views from an array object.
+static std::vector<std::pair<std::string_view, std::string_view>> ExtractSVPairs(VALUE varray) {
+  std::vector<std::pair<std::string_view, std::string_view>> result;
+  const size_t size = RARRAY_LEN(varray);
+  result.reserve(size);
+  for (size_t i = 0; i < size; i++) {
+    volatile VALUE vpair = rb_ary_entry(varray, i);
+    if (TYPE(vpair) == T_ARRAY && RARRAY_LEN(vpair) >= 2) {
+      volatile VALUE vkey = rb_ary_entry(vpair, 0);
+      volatile VALUE vvalue = rb_ary_entry(vpair, 1);
+      vkey = StringValueEx(vkey);
+      std::string_view key_view(RSTRING_PTR(vkey), RSTRING_LEN(vkey));
+      std::string_view value_view;
+      if (vvalue != Qnil) {
+        vvalue = StringValueEx(vvalue);
+        value_view = std::string_view(RSTRING_PTR(vvalue), RSTRING_LEN(vvalue));
+      }
+      result.emplace_back(std::make_pair(key_view, value_view));
+    }
+  }
+  return result;
+}
+
 // Define the module.
 static void DefineModule() {
   mod_tkrzw = rb_define_module("Tkrzw");
@@ -635,6 +658,9 @@ static VALUE dbm_get_multi(VALUE vself, VALUE vkeys) {
   if (sdbm->dbm == nullptr) {
     rb_raise(rb_eRuntimeError, "not opened database");
   }
+  if (TYPE(vkeys) != T_ARRAY) {
+    rb_raise(rb_eRuntimeError, "keys is not an array");
+  }
   std::vector<std::string> keys;
   const int32_t num_keys = RARRAY_LEN(vkeys);
   for (int32_t i = 0; i < num_keys; i++) {
@@ -780,6 +806,9 @@ static VALUE dbm_remove_multi(VALUE vself, VALUE vkeys) {
   if (sdbm->dbm == nullptr) {
     rb_raise(rb_eRuntimeError, "not opened database");
   }
+  if (TYPE(vkeys) != T_ARRAY) {
+    rb_raise(rb_eRuntimeError, "keys is not an array");
+  }
   std::vector<std::string> keys;
   const int32_t num_keys = RARRAY_LEN(vkeys);
   for (int32_t i = 0; i < num_keys; i++) {
@@ -911,6 +940,25 @@ static VALUE dbm_increment(int argc, VALUE* argv, VALUE vself) {
     return LONG2NUM(current);
   }
   return Qnil;
+}
+
+// Implementation of DBM#compare_exchange_multi.
+static VALUE dbm_compare_exchange_multi(VALUE vself, VALUE vexpected, VALUE vdesired) {
+  StructDBM* sdbm = nullptr;
+  Data_Get_Struct(vself, StructDBM, sdbm);
+  if (sdbm->dbm == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened database");
+  }
+  if (TYPE(vexpected) != T_ARRAY || TYPE(vdesired) != T_ARRAY) {
+    rb_raise(rb_eRuntimeError, "expected or desired is not an array");
+  }
+  const auto& expected = ExtractSVPairs(vexpected);
+  const auto& desired = ExtractSVPairs(vdesired);
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sdbm->concurrent, [&]() {
+      status = sdbm->dbm->CompareExchangeMulti(expected, desired);
+    });
+  return MakeStatusValue(std::move(status));
 }
 
 // Implementation of DBM#count.
@@ -1354,6 +1402,7 @@ static void DefineDBM() {
   rb_define_method(cls_dbm, "append", (METHOD)dbm_append, -1);
   rb_define_method(cls_dbm, "compare_exchange", (METHOD)dbm_compare_exchange, 3);
   rb_define_method(cls_dbm, "increment", (METHOD)dbm_increment, -1);
+  rb_define_method(cls_dbm, "compare_exchange_multi", (METHOD)dbm_compare_exchange_multi, 2);
   rb_define_method(cls_dbm, "count", (METHOD)dbm_count, 0);
   rb_define_method(cls_dbm, "file_size", (METHOD)dbm_file_size, 0);
   rb_define_method(cls_dbm, "path", (METHOD)dbm_path, 0);
