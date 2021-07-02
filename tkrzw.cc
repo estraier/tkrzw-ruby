@@ -570,6 +570,7 @@ static VALUE dbm_open(int argc, VALUE* argv, VALUE vself) {
   const bool writable = RTEST(vwritable);
   std::map<std::string, std::string> params = HashToMap(vparams);
   const int32_t num_shards = tkrzw::StrToInt(tkrzw::SearchMap(params, "num_shards", "-1"));
+  params.erase("num_shards");
   bool concurrent = false;
   if (tkrzw::StrToBool(tkrzw::SearchMap(params, "concurrent", "false"))) {
     concurrent = true;
@@ -601,7 +602,6 @@ static VALUE dbm_open(int argc, VALUE* argv, VALUE vself) {
     sdbm->dbm.reset(new tkrzw::ShardDBM());
   } else {
     sdbm->dbm.reset(new tkrzw::PolyDBM());
-    params.erase("num_shards");
   }
   sdbm->concurrent = concurrent;
   sdbm->venc = GetEncoding(encoding);
