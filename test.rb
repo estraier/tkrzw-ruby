@@ -271,6 +271,11 @@ class TkrzwTest < Test::Unit::TestCase
         end
         assert_equal(records, iter_records)
         assert_equal(Status::SUCCESS, copy_dbm.close)
+        if ["HashDBM", "TreeDBM"].include?(class_name)
+          restored_path = copy_path + "-restored"
+          assert_equal(Status::SUCCESS, DBM.restore_database(
+                         copy_path, restored_path, class_name, -1))
+        end
       end
       export_dbm = DBM.new
       assert_equal(Status::SUCCESS, export_dbm.open("", true, dbm: "BabyDBM"))

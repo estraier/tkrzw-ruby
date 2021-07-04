@@ -570,7 +570,6 @@ static VALUE dbm_open(int argc, VALUE* argv, VALUE vself) {
   const bool writable = RTEST(vwritable);
   std::map<std::string, std::string> params = HashToMap(vparams);
   const int32_t num_shards = tkrzw::StrToInt(tkrzw::SearchMap(params, "num_shards", "-1"));
-  params.erase("num_shards");
   bool concurrent = false;
   if (tkrzw::StrToBool(tkrzw::SearchMap(params, "concurrent", "false"))) {
     concurrent = true;
@@ -1242,6 +1241,29 @@ static VALUE dbm_make_iterator(VALUE vself) {
   return rb_class_new_instance(1, &vself, cls_iter);
 }
 
+// Implementation of DBM.restore_database.
+static VALUE dbm_restore_database(int argc, VALUE* argv, VALUE vself) {
+  volatile VALUE vold_file_path, vnew_file_path, vclass_name, vend_offset;
+  rb_scan_args(argc, argv, "22", &vold_file_path, &vnew_file_path, &vclass_name, &vend_offset);
+  const std::string_view old_file_path = GetStringView(StringValueEx(vold_file_path));
+  const std::string_view new_file_path = GetStringView(StringValueEx(vnew_file_path));
+  const std::string_view class_name = GetStringView(StringValueEx(vclass_name));
+  const int64_t end_offset = vend_offset == Qnil ? -1 : GetInteger(vend_offset);
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  int32_t num_shards = 0;
+  if (tkrzw::ShardDBM::GetNumberOfShards(std::string(old_file_path), &num_shards) ==
+      tkrzw::Status::SUCCESS) {
+    status = tkrzw::ShardDBM::RestoreDatabase(
+        std::string(old_file_path), std::string(new_file_path),
+        std::string(class_name), end_offset);
+  } else {
+    status = tkrzw::PolyDBM::RestoreDatabase(
+        std::string(old_file_path), std::string(new_file_path),
+        std::string(class_name), end_offset);
+  }
+  return MakeStatusValue(std::move(status));
+}
+
 // Implementation of DBM#to_s.
 static VALUE dbm_to_s(VALUE vself) {
   StructDBM* sdbm = nullptr;
@@ -1419,6 +1441,7 @@ static void DefineDBM() {
   rb_define_method(cls_dbm, "ordered?", (METHOD)dbm_is_ordered, 0);
   rb_define_method(cls_dbm, "search", (METHOD)dbm_search, -1);
   rb_define_method(cls_dbm, "make_iterator", (METHOD)dbm_make_iterator, 0);
+  rb_define_singleton_method(cls_dbm, "restore_database", (METHOD)dbm_restore_database, -1);
   rb_define_method(cls_dbm, "to_s", (METHOD)dbm_to_s, 0);
   rb_define_method(cls_dbm, "to_i", (METHOD)dbm_to_i, 0);
   rb_define_method(cls_dbm, "inspect", (METHOD)dbm_inspect, 0);
