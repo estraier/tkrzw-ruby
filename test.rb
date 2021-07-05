@@ -558,21 +558,21 @@ class TkrzwTest < Test::Unit::TestCase
     assert_equal(Status::SUCCESS, dbm.export_keys_as_lines(dest_path))
     assert_equal(Status::SUCCESS, dbm.close())
     dbm.destruct
-    textfile = TextFile.new
-    assert_equal(Status::SUCCESS, textfile.open(dest_path))
-    assert_true(textfile.inspect.include?("TextFile"))
-    assert_true(textfile.to_s.include?("TextFile"))
-    assert_equal(12, textfile.search("contain", "001").size)
-    assert_equal(3, textfile.search("contain", "001", 3).size)
-    assert_equal(10, textfile.search("begin", "0000001").size)
-    assert_equal(10, textfile.search("end", "1").size)
-    assert_equal(10, textfile.search("regex", "^\\d+1$").size)
-    assert_equal(10, textfile.search("regex", "^\\d+1$", 0, true).size)
-    assert_equal(3, textfile.search("edit", "00000100", 3, true).size)
-    assert_equal(3, textfile.search("edit", "00000100", 3, false).size)
+    file = Tkrzw::File.new
+    assert_equal(Status::SUCCESS, file.open(dest_path))
+    assert_true(file.inspect.include?("File"))
+    assert_true(file.to_s.include?("File"))
+    assert_equal(12, file.search("contain", "001").size)
+    assert_equal(3, file.search("contain", "001", 3).size)
+    assert_equal(10, file.search("begin", "0000001").size)
+    assert_equal(10, file.search("end", "1").size)
+    assert_equal(10, file.search("regex", "^\\d+1$").size)
+    assert_equal(10, file.search("regex", "^\\d+1$", 0, true).size)
+    assert_equal(3, file.search("edit", "00000100", 3, true).size)
+    assert_equal(3, file.search("edit", "00000100", 3, false).size)
     assert_raise do
-      textfile.search("foo", "00000100", 3, false)
+      file.search("foo", "00000100", 3, false)
     end
-    assert_equal(Status::SUCCESS, textfile.close)
+    assert_equal(Status::SUCCESS, file.close)
   end
 end

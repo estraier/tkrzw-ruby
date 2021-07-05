@@ -45,7 +45,7 @@ VALUE cls_expt;
 ID id_expt_status;
 VALUE cls_dbm;
 VALUE cls_iter;
-VALUE cls_textfile;
+VALUE cls_file;
 
 // Generates a string expression of an arbitrary object.
 static VALUE StringValueEx(VALUE vobj) {
@@ -226,12 +226,12 @@ struct StructIter {
   volatile VALUE venc = Qnil;
 };
 
-// Ruby wrapper of the TextFile object.
-struct StructTextFile {
+// Ruby wrapper of the File object.
+struct StructFile {
   std::unique_ptr<tkrzw::File> file;
   bool concurrent = false;
   volatile VALUE venc = Qnil;
-  explicit StructTextFile(tkrzw::File* file) : file(file) {}
+  explicit StructFile(tkrzw::File* file) : file(file) {}
 };
 
 // Implementation of Utility.get_memory_capacity.
@@ -1760,39 +1760,39 @@ static void DefineIterator() {
   rb_define_method(cls_iter, "inspect", (METHOD)iter_inspect, 0);
 }
 
-// Implementation of TextFile#del.
-static void textfile_del(void* ptr) {
-  delete (StructTextFile*)ptr;
+// Implementation of File#del.
+static void file_del(void* ptr) {
+  delete (StructFile*)ptr;
 }
 
-// Implementation of TextFile.new.
-static VALUE textfile_new(VALUE cls) {
-  StructTextFile* sfile = new StructTextFile(new tkrzw::MemoryMapParallelFile);
-  return Data_Wrap_Struct(cls_textfile, 0, textfile_del, sfile);
+// Implementation of File.new.
+static VALUE file_new(VALUE cls) {
+  StructFile* sfile = new StructFile(new tkrzw::MemoryMapParallelFile);
+  return Data_Wrap_Struct(cls_file, 0, file_del, sfile);
 }
 
-// Implementation of TextFile#initialize.
-static VALUE textfile_initialize(VALUE vself) {
+// Implementation of File#initialize.
+static VALUE file_initialize(VALUE vself) {
   return Qnil;
 }
 
-// Implementation of TextFile#destruct.
-static VALUE textfile_destruct(VALUE vself) {
-  StructTextFile* sfile = nullptr;
-  Data_Get_Struct(vself, StructTextFile, sfile);
+// Implementation of File#destruct.
+static VALUE file_destruct(VALUE vself) {
+  StructFile* sfile = nullptr;
+  Data_Get_Struct(vself, StructFile, sfile);
   if (sfile->file == nullptr) {
-    rb_raise(rb_eRuntimeError, "destructed TextFile");
+    rb_raise(rb_eRuntimeError, "destructed File");
   }
   sfile->file.reset(nullptr);
   return Qnil;
 }
 
-// Implementation of TextFile#open.
-static VALUE textfile_open(int argc, VALUE* argv, VALUE vself) {
-  StructTextFile* sfile = nullptr;
-  Data_Get_Struct(vself, StructTextFile, sfile);
+// Implementation of File#open.
+static VALUE file_open(int argc, VALUE* argv, VALUE vself) {
+  StructFile* sfile = nullptr;
+  Data_Get_Struct(vself, StructFile, sfile);
   if (sfile->file == nullptr) {
-    rb_raise(rb_eRuntimeError, "destructed TextFile");
+    rb_raise(rb_eRuntimeError, "destructed File");
   }
   volatile VALUE vpath, vparams;
   rb_scan_args(argc, argv, "11", &vpath, &vparams);
@@ -1816,12 +1816,12 @@ static VALUE textfile_open(int argc, VALUE* argv, VALUE vself) {
   return MakeStatusValue(std::move(status));
 }
 
-// Implementation of TextFile#close.
-static VALUE textfile_close(VALUE vself) {
-  StructTextFile* sfile = nullptr;
-  Data_Get_Struct(vself, StructTextFile, sfile);
+// Implementation of File#close.
+static VALUE file_close(VALUE vself) {
+  StructFile* sfile = nullptr;
+  Data_Get_Struct(vself, StructFile, sfile);
   if (sfile->file == nullptr) {
-    rb_raise(rb_eRuntimeError, "destructed TextFile");
+    rb_raise(rb_eRuntimeError, "destructed File");
   }
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(true, [&]() {
@@ -1830,12 +1830,12 @@ static VALUE textfile_close(VALUE vself) {
   return MakeStatusValue(std::move(status));
 }
 
-// Implementation of TextFile#search.
-static VALUE textfile_search(int argc, VALUE* argv, VALUE vself) {
-  StructTextFile* sfile = nullptr;
-  Data_Get_Struct(vself, StructTextFile, sfile);
+// Implementation of File#search.
+static VALUE file_search(int argc, VALUE* argv, VALUE vself) {
+  StructFile* sfile = nullptr;
+  Data_Get_Struct(vself, StructFile, sfile);
   if (sfile->file == nullptr) {
-    rb_raise(rb_eRuntimeError, "destructed TextFile");
+    rb_raise(rb_eRuntimeError, "destructed File");
   }
   volatile VALUE vmode, vpattern, vcapacity, vutf;
   rb_scan_args(argc, argv, "22", &vmode, &vpattern, &vcapacity, &vutf);
@@ -1862,32 +1862,32 @@ static VALUE textfile_search(int argc, VALUE* argv, VALUE vself) {
   return vlines;
 }
 
-// Implementation of TextFile#to_s.
-static VALUE textfile_to_s(VALUE vself) {
+// Implementation of File#to_s.
+static VALUE file_to_s(VALUE vself) {
   char kbuf[64];
-  std::sprintf(kbuf, "TextFile:0x%llx", (long long)rb_obj_id(vself));
+  std::sprintf(kbuf, "File:0x%llx", (long long)rb_obj_id(vself));
   return rb_str_new2(kbuf);
 }
 
-// Implementation of TextFile#inspect.
-static VALUE textfile_inspect(VALUE vself) {
+// Implementation of File#inspect.
+static VALUE file_inspect(VALUE vself) {
   char kbuf[64];
-  std::sprintf(kbuf, "#<TextFile:0x%llx>", (long long)rb_obj_id(vself));
+  std::sprintf(kbuf, "#<File:0x%llx>", (long long)rb_obj_id(vself));
   return rb_str_new2(kbuf);
 }
 
 
-// Defines the TextFile class.
-static void DefineTextFile() {
-  cls_textfile = rb_define_class_under(mod_tkrzw, "TextFile", rb_cObject);
-  rb_define_alloc_func(cls_textfile, textfile_new);
-  rb_define_private_method(cls_textfile, "initialize", (METHOD)textfile_initialize, 0);
-  rb_define_method(cls_textfile, "destruct", (METHOD)textfile_destruct, 0);
-  rb_define_method(cls_textfile, "open", (METHOD)textfile_open, -1);
-  rb_define_method(cls_textfile, "close", (METHOD)textfile_close, 0);
-  rb_define_method(cls_textfile, "search", (METHOD)textfile_search, -1);
-  rb_define_method(cls_textfile, "to_s", (METHOD)textfile_to_s, 0);
-  rb_define_method(cls_textfile, "inspect", (METHOD)textfile_inspect, 0);
+// Defines the File class.
+static void DefineFile() {
+  cls_file = rb_define_class_under(mod_tkrzw, "File", rb_cObject);
+  rb_define_alloc_func(cls_file, file_new);
+  rb_define_private_method(cls_file, "initialize", (METHOD)file_initialize, 0);
+  rb_define_method(cls_file, "destruct", (METHOD)file_destruct, 0);
+  rb_define_method(cls_file, "open", (METHOD)file_open, -1);
+  rb_define_method(cls_file, "close", (METHOD)file_close, 0);
+  rb_define_method(cls_file, "search", (METHOD)file_search, -1);
+  rb_define_method(cls_file, "to_s", (METHOD)file_to_s, 0);
+  rb_define_method(cls_file, "inspect", (METHOD)file_inspect, 0);
 }
 
 // Entry point of the library.
@@ -1898,7 +1898,7 @@ void Init_tkrzw() {
   DefineStatusException();
   DefineDBM();
   DefineIterator();
-  DefineTextFile();
+  DefineFile();
 }
 
 }  // extern "C"

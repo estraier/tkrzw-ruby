@@ -431,6 +431,7 @@ module Tkrzw
     # Exports the keys of all records as lines to a text file.
     # @param dest_path A path of the output text file.
     # @return The result status.
+    # As the exported text file is smaller than the database file, scanning the text file by the search method is often faster than scanning the whole database.
     def export_keys_as_lines(dest_path)
       # (native code)
     end
@@ -636,29 +637,28 @@ module Tkrzw
 
   end
 
-  # Text file of line data.
-  # DBM#ExportKeysAsLines outputs keys of the database into a text file.  Scanning the text file is more efficient than scanning the whole database.
-  class TextFile
+  # Generic file implementation.
+  class File
 
-    # Initializes the text file object.
+    # Initializes the file object.
     def initialize()
       # (native code)
     end
 
-    # Opens a text file.
+    # Opens a file.
     # @param path A path of the file.
     # @return The result status.
     def open(path)
       # (native code)
     end
 
-    # Closes the text file.
+    # Closes the file.
     # @return The result status.
     def close()
       # (native code)
     end
 
-    # Searches the text file and get lines which match a pattern.
+    # Searches the file and get lines which match a pattern.
     # @param mode The search mode.  "contain" extracts lines containing the pattern.  "begin" extracts lines beginning with the pattern.  "end" extracts lines ending with the pattern.  "regex" extracts lines partially matches the pattern of a regular expression.  "edit" extracts lines whose edit distance to the pattern is the least.
     # @param pattern The pattern for matching.
     # @param capacity The maximum records to obtain.  0 means unlimited.
