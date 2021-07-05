@@ -306,8 +306,6 @@ class TkrzwTest < Test::Unit::TestCase
       assert_equal(Status::INFEASIBLE_ERROR, export_dbm.compare_exchange("1", nil, "yyy"))
       assert_equal("zzz", export_dbm.get("1", status))
       assert_equal(Status::SUCCESS, export_dbm.compare_exchange("1", "zzz", nil))
-
-
       assert_equal(Status::SUCCESS, export_dbm.compare_exchange_multi(
                      [["hop", nil], ["step", nil]],
                      [["hop", "one"], ["step", "two"]]))
@@ -328,13 +326,6 @@ class TkrzwTest < Test::Unit::TestCase
                        [["hop", nil], ["step", nil]]))
       assert_equal(nil, export_dbm.get("hop"))
       assert_equal(nil, export_dbm.get("step"))
-
-      
-
-
-
-
-      
       iter = export_dbm.make_iterator
       assert_equal(Status::SUCCESS, iter.first)
       assert_equal(Status::SUCCESS, iter.set("foobar"))
@@ -542,6 +533,9 @@ class TkrzwTest < Test::Unit::TestCase
       assert_equal(10, dbm.search("regex", "^\\d+1$", 0, true).size)
       assert_equal(3, dbm.search("edit", "00000100", 3, true).size)
       assert_equal(3, dbm.search("edit", "00000100", 3, false).size)
+      assert_raise do
+        dbm.search("foo", "00000100", 3, false)
+      end
       assert_equal(Status::SUCCESS, dbm.close)
       dbm.destruct
     end
@@ -572,6 +566,9 @@ class TkrzwTest < Test::Unit::TestCase
     assert_equal(10, textfile.search("regex", "^\\d+1$", 0, true).size)
     assert_equal(3, textfile.search("edit", "00000100", 3, true).size)
     assert_equal(3, textfile.search("edit", "00000100", 3, false).size)
+    assert_raise do
+      textfile.search("foo", "00000100", 3, false)
+    end
     assert_equal(Status::SUCCESS, textfile.close)
   end
 end

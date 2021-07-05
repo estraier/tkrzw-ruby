@@ -1206,28 +1206,13 @@ static VALUE dbm_search(int argc, VALUE* argv, VALUE vself) {
   const bool utf = RTEST(vutf);
   std::vector<std::string> keys;
   tkrzw::Status status(tkrzw::Status::SUCCESS);
-  if (mode == "contain") {
-    NativeFunction(sdbm->concurrent, [&]() {
-        status = tkrzw::SearchDBM(sdbm->dbm.get(), pattern, &keys, capacity, tkrzw::StrContains);
-      });
-  } else if (mode == "begin") {
-    NativeFunction(sdbm->concurrent, [&]() {
-        status = tkrzw::SearchDBMForwardMatch(sdbm->dbm.get(), pattern, &keys, capacity);
-      });
-  } else if (mode == "end") {
-    NativeFunction(sdbm->concurrent, [&]() {
-        status = tkrzw::SearchDBM(sdbm->dbm.get(), pattern, &keys, capacity, tkrzw::StrEndsWith);
-      });
-  } else if (mode == "regex") {
-    NativeFunction(sdbm->concurrent, [&]() {
-        status = tkrzw::SearchDBMRegex(sdbm->dbm.get(), pattern, &keys, capacity, utf);
-      });
-  } else if (mode == "edit") {
-    NativeFunction(sdbm->concurrent, [&]() {
-        status = tkrzw::SearchDBMEditDistance(sdbm->dbm.get(), pattern, &keys, capacity, utf);
-      });
-  } else {
-    status = tkrzw::Status(tkrzw::Status::INVALID_ARGUMENT_ERROR, "unknown mode");
+  NativeFunction(sdbm->concurrent, [&]() {
+    status = tkrzw::SearchDBMModal(
+        sdbm->dbm.get(), mode, pattern, &keys, capacity, utf);
+  });
+  if (status != tkrzw::Status::SUCCESS) {
+    const std::string& message = tkrzw::ToString(status);
+    rb_raise(cls_expt, "%s", message.c_str());
   }
   volatile VALUE vkeys = rb_ary_new2(keys.size());
   for (const auto& key : keys) {
@@ -1253,13 +1238,17 @@ static VALUE dbm_restore_database(int argc, VALUE* argv, VALUE vself) {
   int32_t num_shards = 0;
   if (tkrzw::ShardDBM::GetNumberOfShards(std::string(old_file_path), &num_shards) ==
       tkrzw::Status::SUCCESS) {
-    status = tkrzw::ShardDBM::RestoreDatabase(
+    NativeFunction(true, [&]() {
+      status = tkrzw::ShardDBM::RestoreDatabase(
         std::string(old_file_path), std::string(new_file_path),
         std::string(class_name), end_offset);
+    });
   } else {
-    status = tkrzw::PolyDBM::RestoreDatabase(
-        std::string(old_file_path), std::string(new_file_path),
-        std::string(class_name), end_offset);
+    NativeFunction(true, [&]() {
+      status = tkrzw::PolyDBM::RestoreDatabase(
+          std::string(old_file_path), std::string(new_file_path),
+          std::string(class_name), end_offset);
+    });
   }
   return MakeStatusValue(std::move(status));
 }
@@ -1848,40 +1837,21 @@ static VALUE textfile_search(int argc, VALUE* argv, VALUE vself) {
   const std::string_view pattern = GetStringView(vpattern);
   const int64_t capacity = GetInteger(vcapacity);
   const bool utf = RTEST(vutf);
-  std::vector<std::string> keys;
+  std::vector<std::string> lines;
   tkrzw::Status status(tkrzw::Status::SUCCESS);
-  if (mode == "contain") {
-    NativeFunction(sfile->concurrent, [&]() {
-        status = tkrzw::SearchTextFile(
-            sfile->file.get(), pattern, &keys, capacity, tkrzw::StrContains);
-      });
-  } else if (mode == "begin") {
-    NativeFunction(sfile->concurrent, [&]() {
-        status = tkrzw::SearchTextFile(
-            sfile->file.get(), pattern, &keys, capacity, tkrzw::StrBeginsWith);
-      });
-  } else if (mode == "end") {
-    NativeFunction(sfile->concurrent, [&]() {
-        status = tkrzw::SearchTextFile(
-            sfile->file.get(), pattern, &keys, capacity, tkrzw::StrEndsWith);
-      });
-  } else if (mode == "regex") {
-    NativeFunction(sfile->concurrent, [&]() {
-        status = tkrzw::SearchTextFileRegex(sfile->file.get(), pattern, &keys, capacity, utf);
-      });
-  } else if (mode == "edit") {
-    NativeFunction(sfile->concurrent, [&]() {
-        status = tkrzw::SearchTextFileEditDistance(
-            sfile->file.get(), pattern, &keys, capacity, utf);
-      });
-  } else {
-    status = tkrzw::Status(tkrzw::Status::INVALID_ARGUMENT_ERROR, "unknown mode");
+  NativeFunction(sfile->concurrent, [&]() {
+    status = tkrzw::SearchTextFileModal(
+        sfile->file.get(), mode, pattern, &lines, capacity, utf);
+  });
+  if (status != tkrzw::Status::SUCCESS) {
+    const std::string& message = tkrzw::ToString(status);
+    rb_raise(cls_expt, "%s", message.c_str());
   }
-  volatile VALUE vkeys = rb_ary_new2(keys.size());
-  for (const auto& key : keys) {
-    rb_ary_push(vkeys, MakeString(key, sfile->venc));
+  volatile VALUE vlines = rb_ary_new2(lines.size());
+  for (const auto& line : lines) {
+    rb_ary_push(vlines, MakeString(line, sfile->venc));
   }
-  return vkeys;
+  return vlines;
 }
 
 // Implementation of TextFile#to_s.
