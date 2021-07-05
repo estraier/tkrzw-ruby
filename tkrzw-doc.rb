@@ -23,7 +23,15 @@ module Tkrzw
     INT64MAX = 2 ** 63 - 1
     # The maximum value of uint64.
     UINT64MAX = 2 ** 64 - 1
+
+    # Gets the memory capacity of the platform.
+    # @return The memory capacity of the platform in bytes, or -1 on failure.
+    def self.get_memory_capacity()
+      # (native code)
+    end
+
     # Gets the current memory usage of the process.
+    # @return The current memory usage of the process in bytes, or -1 on failure.
     def self.get_memory_usage()
       # (native code)
     end

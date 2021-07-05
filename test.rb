@@ -34,6 +34,7 @@ class TkrzwTest < Test::Unit::TestCase
     assert_equal(-2 ** 63, Utility::INT64MIN)
     assert_equal(2 ** 63 - 1, Utility::INT64MAX)
     assert_equal(2 ** 64 - 1, Utility::UINT64MAX)
+    assert_true(Utility.get_memory_capacity > 0)
     assert_true(Utility.get_memory_usage > 0)
     assert_equal(3042090208, Utility.primary_hash("abc", (1 << 32) - 1))
     assert_equal(16973900370012003622, Utility.primary_hash("abc"))

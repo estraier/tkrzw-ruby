@@ -234,10 +234,14 @@ struct StructTextFile {
   explicit StructTextFile(tkrzw::File* file) : file(file) {}
 };
 
+// Implementation of Utility.get_memory_capacity.
+static VALUE util_get_memory_capacity(VALUE vself) {
+  return LL2NUM(tkrzw::GetMemoryCapacity());
+}
+
 // Implementation of Utility.get_memory_usage.
 static VALUE util_get_memory_usage(VALUE vself) {
-  const std::map<std::string, std::string> records = tkrzw::GetSystemInfo();
-  return LL2NUM(tkrzw::StrToInt(tkrzw::SearchMap(records, "mem_rss", "-1")));
+  return LL2NUM(tkrzw::GetMemoryUsage());
 }
 
 // Implementation of Utility.primary_hash.
@@ -296,7 +300,10 @@ static void DefineUtility() {
   rb_define_const(cls_util, "INT64MIN", LL2NUM(tkrzw::INT64MIN));
   rb_define_const(cls_util, "INT64MAX", LL2NUM(tkrzw::INT64MAX));
   rb_define_const(cls_util, "UINT64MAX", ULL2NUM(tkrzw::UINT64MAX));
-  rb_define_singleton_method(cls_util, "get_memory_usage", (METHOD)util_get_memory_usage, 0);
+  rb_define_singleton_method(cls_util, "get_memory_capacity",
+                             (METHOD)util_get_memory_capacity, 0);
+  rb_define_singleton_method(cls_util, "get_memory_usage",
+                             (METHOD)util_get_memory_usage, 0);
   rb_define_singleton_method(cls_util, "primary_hash", (METHOD)util_primary_hash, -1);
   rb_define_singleton_method(cls_util, "secondary_hash", (METHOD)util_secondary_hash, -1);
   rb_define_singleton_method(cls_util, "edit_distance_lev", (METHOD)util_edit_distance_lev, -1);
