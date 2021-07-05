@@ -28,14 +28,17 @@ class TkrzwTest < Test::Unit::TestCase
   # Utility tests.
   def test_utility
     assert_match(/^\d+\.\d+\.\d+$/ , Utility::VERSION)
+    assert_true(Utility::OS_NAME.size > 0)
     assert_equal(-2 ** 31, Utility::INT32MIN)
     assert_equal(2 ** 31 - 1, Utility::INT32MAX)
     assert_equal(2 ** 32 - 1, Utility::UINT32MAX)
     assert_equal(-2 ** 63, Utility::INT64MIN)
     assert_equal(2 ** 63 - 1, Utility::INT64MAX)
     assert_equal(2 ** 64 - 1, Utility::UINT64MAX)
-    assert_true(Utility.get_memory_capacity > 0)
-    assert_true(Utility.get_memory_usage > 0)
+    if Utility::OS_NAME == "Linux"
+      assert_true(Utility.get_memory_capacity > 0)
+      assert_true(Utility.get_memory_usage > 0)
+    end
     assert_equal(3042090208, Utility.primary_hash("abc", (1 << 32) - 1))
     assert_equal(16973900370012003622, Utility.primary_hash("abc"))
     assert_equal(702176507, Utility.secondary_hash("abc", (1 << 32) - 1))

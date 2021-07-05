@@ -11,6 +11,8 @@ module Tkrzw
   class Utility
     # The package version numbers.
     VERSION = "0.0.0"
+    # The recognized OS name.
+    OS_NAME = "unknown"
     # The minimum value of int32.
     INT32MIN = -2 ** 31
     # The maximum value of int32.

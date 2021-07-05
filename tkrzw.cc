@@ -294,6 +294,7 @@ static VALUE util_edit_distance_lev(int argc, VALUE* argv, VALUE vself) {
 static void DefineUtility() {
   cls_util = rb_define_class_under(mod_tkrzw, "Utility", rb_cObject);
   rb_define_const(cls_util, "VERSION", rb_str_new2(tkrzw::PACKAGE_VERSION));
+  rb_define_const(cls_util, "OS_NAME", rb_str_new2(tkrzw::OS_NAME));
   rb_define_const(cls_util, "INT32MIN", LL2NUM(tkrzw::INT32MIN));
   rb_define_const(cls_util, "INT32MAX", LL2NUM(tkrzw::INT32MAX));
   rb_define_const(cls_util, "UINT32MAX", ULL2NUM(tkrzw::UINT32MAX));
