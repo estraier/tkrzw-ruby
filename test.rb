@@ -559,7 +559,7 @@ class TkrzwTest < Test::Unit::TestCase
     assert_equal(Status::SUCCESS, dbm.close())
     dbm.destruct
     file = Tkrzw::File.new
-    assert_equal(Status::SUCCESS, file.open(dest_path))
+    assert_equal(Status::SUCCESS, file.open(dest_path, false))
     assert_true(file.inspect.include?("File"))
     assert_true(file.to_s.include?("File"))
     assert_equal(12, file.search("contain", "001").size)

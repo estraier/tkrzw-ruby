@@ -20,6 +20,7 @@
 #include "tkrzw_dbm_shard.h"
 #include "tkrzw_file.h"
 #include "tkrzw_file_mmap.h"
+#include "tkrzw_file_poly.h"
 #include "tkrzw_file_util.h"
 #include "tkrzw_key_comparators.h"
 #include "tkrzw_lib_common.h"
@@ -228,10 +229,10 @@ struct StructIter {
 
 // Ruby wrapper of the File object.
 struct StructFile {
-  std::unique_ptr<tkrzw::File> file;
+  std::unique_ptr<tkrzw::PolyFile> file;
   bool concurrent = false;
   volatile VALUE venc = Qnil;
-  explicit StructFile(tkrzw::File* file) : file(file) {}
+  explicit StructFile(tkrzw::PolyFile* file) : file(file) {}
 };
 
 // Implementation of Utility.get_memory_capacity.
@@ -1767,7 +1768,7 @@ static void file_del(void* ptr) {
 
 // Implementation of File.new.
 static VALUE file_new(VALUE cls) {
-  StructFile* sfile = new StructFile(new tkrzw::MemoryMapParallelFile);
+  StructFile* sfile = new StructFile(new tkrzw::PolyFile);
   return Data_Wrap_Struct(cls_file, 0, file_del, sfile);
 }
 
@@ -1794,14 +1795,28 @@ static VALUE file_open(int argc, VALUE* argv, VALUE vself) {
   if (sfile->file == nullptr) {
     rb_raise(rb_eRuntimeError, "destructed File");
   }
-  volatile VALUE vpath, vparams;
-  rb_scan_args(argc, argv, "11", &vpath, &vparams);
+  volatile VALUE vpath, vwritable, vparams;
+  rb_scan_args(argc, argv, "21", &vpath, &vwritable, &vparams);
   vpath = StringValueEx(vpath);
   const std::string_view path = GetStringView(vpath);
+  const bool writable = RTEST(vwritable);  
   std::map<std::string, std::string> params = HashToMap(vparams);
   bool concurrent = false;
   if (tkrzw::StrToBool(tkrzw::SearchMap(params, "concurrent", "false"))) {
     concurrent = true;
+  }
+  int32_t open_options = 0;
+  if (tkrzw::StrToBool(tkrzw::SearchMap(params, "truncate", "false"))) {
+    open_options |= tkrzw::File::OPEN_TRUNCATE;
+  }
+  if (tkrzw::StrToBool(tkrzw::SearchMap(params, "no_create", "false"))) {
+    open_options |= tkrzw::File::OPEN_NO_CREATE;
+  }
+  if (tkrzw::StrToBool(tkrzw::SearchMap(params, "no_wait", "false"))) {
+      open_options |= tkrzw::File::OPEN_NO_WAIT;
+  }
+  if (tkrzw::StrToBool(tkrzw::SearchMap(params, "no_lock", "false"))) {
+    open_options |= tkrzw::File::OPEN_NO_LOCK;
   }
   std::string encoding = tkrzw::SearchMap(params, "encoding", "");
   if (encoding.empty()) {
@@ -1811,7 +1826,7 @@ static VALUE file_open(int argc, VALUE* argv, VALUE vself) {
   sfile->venc = GetEncoding(encoding);
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(sfile->concurrent, [&]() {
-      status = sfile->file->Open(std::string(path), false);
+      status = sfile->file->OpenAdvanced(std::string(path), writable, open_options, params);
     });
   return MakeStatusValue(std::move(status));
 }
