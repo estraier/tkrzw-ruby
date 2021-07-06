@@ -201,6 +201,11 @@ module Tkrzw
       # (native code)
     end
 
+    # Released the resource explicitly.
+    def destruct()
+      # (native code)
+    end
+
     # Opens a database file.
     # @param path A path of the file.
     # @param writable If true, the file is writable.  If false, it is read-only.
@@ -535,6 +540,11 @@ module Tkrzw
       # (native code)
     end
 
+    # Released the resource explicitly.
+    def destruct()
+      # (native code)
+    end
+
     # Initializes the iterator to indicate the first record.
     # @return The result status.
     # Even if there's no record, the operation doesn't fail.
@@ -638,10 +648,16 @@ module Tkrzw
   end
 
   # Generic file implementation.
+  # All operations except for "open" and "close" are thread-safe; Multiple threads can access the same file concurrently.  You can specify a concrete class when you call the "open" method.  Every opened file must be closed explicitly by the "close" method to avoid data corruption.  Moreover, every unused file object should be destructed by the "destruct" method to free resources.
   class File
 
     # Initializes the file object.
     def initialize()
+      # (native code)
+    end
+
+    # Released the resource explicitly.
+    def destruct()
       # (native code)
     end
 
@@ -651,6 +667,7 @@ module Tkrzw
     # @param params Optional parameters.
     # @return The result status.
     # The optional parameters can include an option for the concurrency tuning.  By default, database operatins are done under the GIL (Global Interpreter Lock), which means that database operations are not done concurrently even if you use multiple threads.  If the "concurrent" parameter is true, database operations are done outside the GIL, which means that database operations can be done concurrently if you use multiple threads.  However, the downside is that swapping thread data is costly so the actual throughput is often worse in the concurrent mode than in the normal mode.  Therefore, the concurrent mode should be used only if the database is huge and it can cause blocking of threads in multi-thread usage.
+    # By default, the encoding of retrieved record data by the "get" method is implicitly set as "ASCII-8BIT".  If you want to change the implicit encoding to "UTF-8" or others, set the encoding name as the value of the "encoding" parameter.
     # The optional parameters can include options for the file opening operation.
     # - truncate (bool): True to truncate the file.
     # - no_create (bool): True to omit file creation.
@@ -667,6 +684,55 @@ module Tkrzw
     # Closes the file.
     # @return The result status.
     def close()
+      # (native code)
+    end
+
+    # Reads data.
+    # @param off The offset of a source region.
+    # @param size The size to be read.
+    # @param status A status object to which the result status is assigned.  It can be omitted.
+    # @return The read data or nil on failure.
+    def read(off, size, status=nil)
+      # (native code)
+    end
+      
+    # Writes data.
+    # @param off The offset of the destination region.
+    # @param data The data to write.
+    # @return The result status.
+    def write(off, data)
+      # (native code)
+    end
+
+    # Appends data at the end of the file.
+    # @param data The data to write.
+    # @param status A status object to which the result status is assigned.  It can be omitted.
+    # @return The offset at which the data has been put, or nil on failure.
+    def append(data, status=nil)
+      # (native code)
+    end
+
+    # Truncates the file.
+    # @param size The new size of the file.
+    # @return The result status.
+    # If the file is shrunk, data after the new file end is discarded.  If the file is expanded, null codes are filled after the old file end.
+    def truncate(size)
+      # (native code)
+    end
+
+    # Synchronizes the content of the file to the file system.
+    # @param hard True to do physical synchronization with the hardware or false to do only logical synchronization with the file system.
+    # @param off The offset of the region to be synchronized.
+    # @param size The size of the region to be synchronized.  If it is zero, the length to the end of file is specified.
+    # @return The result status.
+    # The pysical file size can be larger than the logical size in order to improve performance by reducing frequency of allocation.  Thus, you should call this function before accessing the file with external tools.
+    def synchronize(hard, off=0, size=0)
+      # (native code)
+    end
+
+    # Gets the size of the file.
+    # @return The size of the file or nil on failure.
+    def get_size()
       # (native code)
     end
 

@@ -945,7 +945,7 @@ static VALUE dbm_increment(int argc, VALUE* argv, VALUE vself) {
     SetStatusValue(vstatus, status);
   }
   if (status == tkrzw::Status::SUCCESS) {
-    return LONG2NUM(current);
+    return LL2NUM(current);
   }
   return Qnil;
 }
@@ -981,7 +981,7 @@ static VALUE dbm_count(VALUE vself) {
       count = sdbm->dbm->CountSimple();
     });
   if (count >= 0) {
-    return LONG2NUM(count);
+    return LL2NUM(count);
   }
   return Qnil;
 }
@@ -998,7 +998,7 @@ static VALUE dbm_file_size(VALUE vself) {
       file_size = sdbm->dbm->GetFileSizeSimple();
     });
   if (file_size >= 0) {
-    return LONG2NUM(file_size);
+    return LL2NUM(file_size);
   }
   return Qnil;
 }
@@ -1813,7 +1813,7 @@ static VALUE file_open(int argc, VALUE* argv, VALUE vself) {
     open_options |= tkrzw::File::OPEN_NO_CREATE;
   }
   if (tkrzw::StrToBool(tkrzw::SearchMap(params, "no_wait", "false"))) {
-      open_options |= tkrzw::File::OPEN_NO_WAIT;
+    open_options |= tkrzw::File::OPEN_NO_WAIT;
   }
   if (tkrzw::StrToBool(tkrzw::SearchMap(params, "no_lock", "false"))) {
     open_options |= tkrzw::File::OPEN_NO_LOCK;
@@ -1845,6 +1845,127 @@ static VALUE file_close(VALUE vself) {
   return MakeStatusValue(std::move(status));
 }
 
+// Implementation of File#read.
+static VALUE file_read(int argc, VALUE* argv, VALUE vself) {
+  StructFile* sfile = nullptr;
+  Data_Get_Struct(vself, StructFile, sfile);
+  if (sfile->file == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed File");
+  }
+  volatile VALUE voff, vsize, vstatus;
+  rb_scan_args(argc, argv, "21", &voff, &vsize, &vstatus);
+  const int64_t off = std::max<int64_t>(0, GetInteger(voff));
+  const int64_t size =  std::max<int64_t>(0, GetInteger(vsize));
+  char* buf = new char[size];
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sfile->concurrent, [&]() {
+      status = sfile->file->Read(off, buf, size);
+    });
+  if (rb_obj_is_instance_of(vstatus, cls_status)) {
+    SetStatusValue(vstatus, status);
+  }
+  if (status == tkrzw::Status::SUCCESS) {
+    volatile VALUE vdata = MakeString(std::string_view(buf, size), sfile->venc);
+    delete[] buf;
+    return vdata;
+  }
+  delete[] buf;
+  return Qnil;
+}
+
+// Implementation of File#write.
+static VALUE file_write(VALUE vself, VALUE voff, VALUE vdata) {
+  StructFile* sfile = nullptr;
+  Data_Get_Struct(vself, StructFile, sfile);
+  if (sfile->file == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed File");
+  }
+  const int64_t off = std::max<int64_t>(0, GetInteger(voff));
+  vdata = StringValueEx(vdata);
+  const std::string_view data = GetStringView(vdata);
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sfile->concurrent, [&]() {
+      status = sfile->file->Write(off, data.data(), data.size());
+    });
+  return MakeStatusValue(std::move(status));
+}
+
+// Implementation of File#append.
+static VALUE file_append(int argc, VALUE* argv, VALUE vself) {
+  StructFile* sfile = nullptr;
+  Data_Get_Struct(vself, StructFile, sfile);
+  if (sfile->file == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed File");
+  }
+  volatile VALUE vdata, vstatus;
+  rb_scan_args(argc, argv, "11", &vdata, &vstatus);
+  vdata = StringValueEx(vdata);
+  const std::string_view data = GetStringView(vdata);
+  int64_t new_off = 0;
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sfile->concurrent, [&]() {
+      status = sfile->file->Append(data.data(), data.size(), &new_off);
+    });
+  if (rb_obj_is_instance_of(vstatus, cls_status)) {
+    SetStatusValue(vstatus, status);
+  }
+  if (status == tkrzw::Status::SUCCESS) {
+    return LL2NUM(new_off);
+  }
+  return Qnil;
+}
+
+// Implementation of File#truncate.
+static VALUE file_truncate(VALUE vself, VALUE vsize) {
+  StructFile* sfile = nullptr;
+  Data_Get_Struct(vself, StructFile, sfile);
+  if (sfile->file == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed File");
+  }
+  const int64_t size = std::max<int64_t>(0, GetInteger(vsize));
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(true, [&]() {
+      status = sfile->file->Truncate(size);
+    });
+  return MakeStatusValue(std::move(status));
+}
+
+// Implementation of File#synchronize.
+static VALUE file_synchronize(int argc, VALUE* argv, VALUE vself) {
+  StructFile* sfile = nullptr;
+  Data_Get_Struct(vself, StructFile, sfile);
+  if (sfile->file == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed File");
+  }
+  volatile VALUE vhard, voff, vsize;
+  rb_scan_args(argc, argv, "12", &vhard, &voff, &vsize);
+  const bool hard = RTEST(vhard);
+  const int64_t off = voff == Qnil ? 0 : std::max<int64_t>(0, GetInteger(voff));
+  const int64_t size = vsize == Qnil ? 0 : std::max<int64_t>(0, GetInteger(vsize));
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sfile->concurrent, [&]() {
+      status = sfile->file->Synchronize(hard, off, size);
+    });
+  return MakeStatusValue(std::move(status));
+}
+
+// Implementation of File#get_size.
+static VALUE file_get_size(VALUE vself) {
+  StructFile* sfile = nullptr;
+  Data_Get_Struct(vself, StructFile, sfile);
+  if (sfile->file == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed File");
+  }
+  int64_t size = 0;
+  NativeFunction(sfile->concurrent, [&]() {
+      size = sfile->file->GetSizeSimple();
+    });
+  if (size >= 0) {
+    return LL2NUM(size);
+  }
+  return Qnil;
+}
+  
 // Implementation of File#search.
 static VALUE file_search(int argc, VALUE* argv, VALUE vself) {
   StructFile* sfile = nullptr;
@@ -1879,18 +2000,57 @@ static VALUE file_search(int argc, VALUE* argv, VALUE vself) {
 
 // Implementation of File#to_s.
 static VALUE file_to_s(VALUE vself) {
-  char kbuf[64];
-  std::sprintf(kbuf, "File:0x%llx", (long long)rb_obj_id(vself));
-  return rb_str_new2(kbuf);
+  StructFile* sfile = nullptr;
+  Data_Get_Struct(vself, StructFile, sfile);
+  std::string class_name = "unknown";
+  auto* in_file = sfile->file->GetInternalFile();
+  if (in_file != nullptr) {
+    const auto& file_type = in_file->GetType();
+    if (file_type == typeid(tkrzw::StdFile)) {
+      class_name = "StdFile";
+    } else if (file_type == typeid(tkrzw::MemoryMapParallelFile)) {
+      class_name = "MemoryMapParallelFile";
+    } else if (file_type == typeid(tkrzw::MemoryMapAtomicFile)) {
+      class_name = "MemoryMapAtomicFile";
+    } else if (file_type == typeid(tkrzw::PositionalParallelFile)) {
+      class_name = "PositionalParallelFile";
+    } else if (file_type == typeid(tkrzw::PositionalAtomicFile)) {
+      class_name = "PositionalAtomicFile";
+    }
+  }
+  const std::string path = sfile->file->GetPathSimple();
+  const int64_t size = sfile->file->GetSizeSimple();
+  const std::string expr =
+      tkrzw::StrCat(class_name, ":", tkrzw::StrEscapeC(path, true), ":", size);
+  return rb_str_new(expr.data(), expr.size());
 }
 
 // Implementation of File#inspect.
 static VALUE file_inspect(VALUE vself) {
-  char kbuf[64];
-  std::sprintf(kbuf, "#<File:0x%llx>", (long long)rb_obj_id(vself));
-  return rb_str_new2(kbuf);
+  StructFile* sfile = nullptr;
+  Data_Get_Struct(vself, StructFile, sfile);
+  std::string class_name = "unknown";
+  auto* in_file = sfile->file->GetInternalFile();
+  if (in_file != nullptr) {
+    const auto& file_type = in_file->GetType();
+    if (file_type == typeid(tkrzw::StdFile)) {
+      class_name = "StdFile";
+    } else if (file_type == typeid(tkrzw::MemoryMapParallelFile)) {
+      class_name = "MemoryMapParallelFile";
+    } else if (file_type == typeid(tkrzw::MemoryMapAtomicFile)) {
+      class_name = "MemoryMapAtomicFile";
+    } else if (file_type == typeid(tkrzw::PositionalParallelFile)) {
+      class_name = "PositionalParallelFile";
+    } else if (file_type == typeid(tkrzw::PositionalAtomicFile)) {
+      class_name = "PositionalAtomicFile";
+    }
+  }
+  const std::string path = sfile->file->GetPathSimple();
+  const int64_t size = sfile->file->GetSizeSimple();
+  const std::string expr = tkrzw::StrCat(
+      "#<tkrzw::File:", class_name, ":", tkrzw::StrEscapeC(path, true), ":", size, ">");
+  return rb_str_new(expr.data(), expr.size());
 }
-
 
 // Defines the File class.
 static void DefineFile() {
@@ -1900,6 +2060,12 @@ static void DefineFile() {
   rb_define_method(cls_file, "destruct", (METHOD)file_destruct, 0);
   rb_define_method(cls_file, "open", (METHOD)file_open, -1);
   rb_define_method(cls_file, "close", (METHOD)file_close, 0);
+  rb_define_method(cls_file, "read", (METHOD)file_read, -1);
+  rb_define_method(cls_file, "write", (METHOD)file_write, 2);
+  rb_define_method(cls_file, "append", (METHOD)file_append, -1);
+  rb_define_method(cls_file, "truncate", (METHOD)file_truncate, 1);
+  rb_define_method(cls_file, "synchronize", (METHOD)file_synchronize, -1);
+  rb_define_method(cls_file, "get_size", (METHOD)file_get_size, 0);
   rb_define_method(cls_file, "search", (METHOD)file_search, -1);
   rb_define_method(cls_file, "to_s", (METHOD)file_to_s, 0);
   rb_define_method(cls_file, "inspect", (METHOD)file_inspect, 0);

@@ -575,4 +575,32 @@ class TkrzwTest < Test::Unit::TestCase
     end
     assert_equal(Status::SUCCESS, file.close)
   end
+
+  # File tests.
+  def test_file
+    file = Tkrzw::File.new
+    path = _make_tmp_path("casket.txt")
+    assert_equal(Status::SUCCESS, file.open(
+                   path, true, truncate: true, file: "pos-atom", block_size: 512,
+                   access_options: "padding:pagecache"))
+    assert_equal(Status::SUCCESS, file.write(5, "12345"))
+    assert_equal(Status::SUCCESS, file.write(0, "ABCDE"))
+    assert_equal(10, file.append("FGH"))
+    assert_equal(13, file.append("IJ"))
+    assert_equal(15, file.get_size())
+    assert_equal(Status::SUCCESS, file.synchronize(false))
+    assert_equal(Status::SUCCESS, file.truncate(12))
+    assert_equal(12, file.get_size())
+    assert_equal("ABCDE12345FG", file.read(0, 12))
+    assert_equal("DE123", file.read(3, 5))
+    status = Status.new()
+    assert_equal(nil, file.read(1024, 10, status))
+    assert_equal(Status::INFEASIBLE_ERROR, status)
+    assert_equal(Status::SUCCESS, file.close())
+    assert_equal(Status::SUCCESS, file.open(path, false))
+    assert_equal(512, file.get_size())
+    assert_equal("E12345F", file.read(4, 7))
+    assert_equal(Status::SUCCESS, file.close)
+    file.destruct
+  end
 end
