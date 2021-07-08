@@ -534,11 +534,11 @@ class TkrzwTest < Test::Unit::TestCase
       assert_equal(10, dbm.search("begin", "0000001").size)
       assert_equal(10, dbm.search("end", "1").size)
       assert_equal(10, dbm.search("regex", "^\\d+1$").size)
-      assert_equal(10, dbm.search("regex", "^\\d+1$", 0, true).size)
-      assert_equal(3, dbm.search("edit", "00000100", 3, true).size)
-      assert_equal(3, dbm.search("edit", "00000100", 3, false).size)
+      assert_equal(10, dbm.search("regex", "^\\d+1$", 0).size)
+      assert_equal(3, dbm.search("edit", "00000100", 3).size)
+      assert_equal(3, dbm.search("editbin", "00000100", 3).size)
       assert_raise do
-        dbm.search("foo", "00000100", 3, false)
+        dbm.search("foo", "00000100", 3)
       end
       assert_equal(Status::SUCCESS, dbm.close)
       dbm.destruct
@@ -567,11 +567,11 @@ class TkrzwTest < Test::Unit::TestCase
     assert_equal(10, file.search("begin", "0000001").size)
     assert_equal(10, file.search("end", "1").size)
     assert_equal(10, file.search("regex", "^\\d+1$").size)
-    assert_equal(10, file.search("regex", "^\\d+1$", 0, true).size)
-    assert_equal(3, file.search("edit", "00000100", 3, true).size)
-    assert_equal(3, file.search("edit", "00000100", 3, false).size)
+    assert_equal(10, file.search("regex", "^\\d+1$", 0).size)
+    assert_equal(3, file.search("edit", "00000100", 3).size)
+    assert_equal(3, file.search("editbin", "00000100", 3).size)
     assert_raise do
-      file.search("foo", "00000100", 3, false)
+      file.search("foo", "00000100", 3)
     end
     assert_equal(Status::SUCCESS, file.close)
   end
