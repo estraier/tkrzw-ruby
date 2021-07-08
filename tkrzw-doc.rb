@@ -466,12 +466,11 @@ module Tkrzw
     end
 
     # Searches the database and get keys which match a pattern.
-    # @param mode The search mode.  "contain" extracts keys containing the pattern.  "begin" extracts keys beginning with the pattern.  "end" extracts keys ending with the pattern.  "regex" extracts keys partially matches the pattern of a regular expression.  "edit" extracts keys whose edit distance to the pattern is the least.
+    # @param mode The search mode.  "contain" extracts keys containing the pattern.  "begin" extracts keys beginning with the pattern.  "end" extracts keys ending with the pattern.  "regex" extracts keys partially matches the pattern of a regular expression.  "edit" extracts keys whose edit distance to the UTF-8 pattern is the least.  "editbin" extracts keys whose edit distance to the binary pattern is the least.
     # @param pattern The pattern for matching.
     # @param capacity The maximum records to obtain.  0 means unlimited.
-    # @param utf If true, text is treated as UTF-8, which affects "regex" and "edit".
     # @return A list of keys matching the condition.
-    def search(mode, pattern, capacity=0, utf=false)
+    def search(mode, pattern, capacity=0)
       # (native code)
     end
   
@@ -737,12 +736,11 @@ module Tkrzw
     end
 
     # Searches the file and get lines which match a pattern.
-    # @param mode The search mode.  "contain" extracts lines containing the pattern.  "begin" extracts lines beginning with the pattern.  "end" extracts lines ending with the pattern.  "regex" extracts lines partially matches the pattern of a regular expression.  "edit" extracts lines whose edit distance to the pattern is the least.
+    # @param mode The search mode.  "contain" extracts lines containing the pattern.  "begin" extracts lines beginning with the pattern.  "end" extracts lines ending with the pattern.  "regex" extracts lines partially matches the pattern of a regular expression.  "edit" extracts lines whose edit distance to the UTF-8 pattern is the least.  "editbin" extracts lines whose edit distance to the binary pattern is the least.
     # @param pattern The pattern for matching.
     # @param capacity The maximum records to obtain.  0 means unlimited.
-    # @param utf If true, text is treated as UTF-8, which affects "regex" and "edit".
     # @return A list of lines matching the condition.
-    def search(mode, pattern, capacity=0, utf=false)
+    def search(mode, pattern, capacity=0)
       # (native code)
     end
 

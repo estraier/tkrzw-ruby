@@ -1205,19 +1205,17 @@ static VALUE dbm_search(int argc, VALUE* argv, VALUE vself) {
   if (sdbm->dbm == nullptr) {
     rb_raise(rb_eRuntimeError, "not opened database");
   }
-  volatile VALUE vmode, vpattern, vcapacity, vutf;
-  rb_scan_args(argc, argv, "22", &vmode, &vpattern, &vcapacity, &vutf);
+  volatile VALUE vmode, vpattern, vcapacity;
+  rb_scan_args(argc, argv, "21", &vmode, &vpattern, &vcapacity);
   vmode = StringValueEx(vmode);
   const std::string_view mode = GetStringView(vmode);
   vpattern = StringValueEx(vpattern);
   const std::string_view pattern = GetStringView(vpattern);
   const int64_t capacity = GetInteger(vcapacity);
-  const bool utf = RTEST(vutf);
   std::vector<std::string> keys;
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(sdbm->concurrent, [&]() {
-    status = tkrzw::SearchDBMModal(
-        sdbm->dbm.get(), mode, pattern, &keys, capacity, utf);
+    status = tkrzw::SearchDBMModal(sdbm->dbm.get(), mode, pattern, &keys, capacity);
   });
   if (status != tkrzw::Status::SUCCESS) {
     const std::string& message = tkrzw::ToString(status);
@@ -1973,19 +1971,17 @@ static VALUE file_search(int argc, VALUE* argv, VALUE vself) {
   if (sfile->file == nullptr) {
     rb_raise(rb_eRuntimeError, "destructed File");
   }
-  volatile VALUE vmode, vpattern, vcapacity, vutf;
-  rb_scan_args(argc, argv, "22", &vmode, &vpattern, &vcapacity, &vutf);
+  volatile VALUE vmode, vpattern, vcapacity;
+  rb_scan_args(argc, argv, "21", &vmode, &vpattern, &vcapacity);
   vmode = StringValueEx(vmode);
   const std::string_view mode = GetStringView(vmode);
   vpattern = StringValueEx(vpattern);
   const std::string_view pattern = GetStringView(vpattern);
   const int64_t capacity = GetInteger(vcapacity);
-  const bool utf = RTEST(vutf);
   std::vector<std::string> lines;
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(sfile->concurrent, [&]() {
-    status = tkrzw::SearchTextFileModal(
-        sfile->file.get(), mode, pattern, &lines, capacity, utf);
+    status = tkrzw::SearchTextFileModal(sfile->file.get(), mode, pattern, &lines, capacity);
   });
   if (status != tkrzw::Status::SUCCESS) {
     const std::string& message = tkrzw::ToString(status);
