@@ -1122,23 +1122,59 @@ static VALUE dbm_export(VALUE vself, VALUE vdestdbm) {
   return MakeStatusValue(std::move(status));
 }
 
-// Implementation of DBM#export_keys_as_lines.
-static VALUE dbm_export_keys_as_lines(VALUE vself, VALUE vdestpath) {
+// Implementation of DBM#export_records_to_flat_records.
+static VALUE dbm_export_records_to_flat_records(VALUE vself, VALUE vfile) {
   StructDBM* sdbm = nullptr;
   Data_Get_Struct(vself, StructDBM, sdbm);
   if (sdbm->dbm == nullptr) {
     rb_raise(rb_eRuntimeError, "not opened database");
   }
-  vdestpath = StringValueEx(vdestpath);
-  const std::string_view dest_path = GetStringView(vdestpath);
+  StructFile* sfile = nullptr;
+  Data_Get_Struct(vfile, StructFile, sfile);
+  if (sfile->file == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened file");
+  }
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(sdbm->concurrent, [&]() {
-      tkrzw::MemoryMapParallelFile file;
-      status = file.Open(std::string(dest_path), true, tkrzw::File::OPEN_TRUNCATE);
-      if (status == tkrzw::Status::SUCCESS) {
-        status |= tkrzw::ExportDBMKeysAsLines(sdbm->dbm.get(), &file);
-        status |= file.Close();
-      }
+      status = tkrzw::ExportDBMRecordsToFlatRecords(sdbm->dbm.get(),sfile->file.get());
+    });
+  return MakeStatusValue(std::move(status));
+}
+
+// Implementation of DBM#import_records_from_flat_records.
+static VALUE dbm_import_records_from_flat_records(VALUE vself, VALUE vfile) {
+  StructDBM* sdbm = nullptr;
+  Data_Get_Struct(vself, StructDBM, sdbm);
+  if (sdbm->dbm == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened database");
+  }
+  StructFile* sfile = nullptr;
+  Data_Get_Struct(vfile, StructFile, sfile);
+  if (sfile->file == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened file");
+  }
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sdbm->concurrent, [&]() {
+      status = tkrzw::ImportDBMRecordsFromFlatRecords(sdbm->dbm.get(),sfile->file.get());
+    });
+  return MakeStatusValue(std::move(status));
+}
+
+// Implementation of DBM#export_keys_as_lines.
+static VALUE dbm_export_keys_as_lines(VALUE vself, VALUE vfile) {
+  StructDBM* sdbm = nullptr;
+  Data_Get_Struct(vself, StructDBM, sdbm);
+  if (sdbm->dbm == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened database");
+  }
+  StructFile* sfile = nullptr;
+  Data_Get_Struct(vfile, StructFile, sfile);
+  if (sfile->file == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened file");
+  }
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sdbm->concurrent, [&]() {
+      status = tkrzw::ExportDBMKeysAsLines(sdbm->dbm.get(),sfile->file.get());
     });
   return MakeStatusValue(std::move(status));
 }
@@ -1430,6 +1466,10 @@ static void DefineDBM() {
   rb_define_method(cls_dbm, "synchronize", (METHOD)dbm_synchronize, -1);
   rb_define_method(cls_dbm, "copy_file_data", (METHOD)dbm_copy_file_data, 1);
   rb_define_method(cls_dbm, "export", (METHOD)dbm_export, 1);
+  rb_define_method(cls_dbm, "export_records_to_flat_records",
+                   (METHOD)dbm_export_records_to_flat_records, 1);
+  rb_define_method(cls_dbm, "import_records_from_flat_records",
+                   (METHOD)dbm_import_records_from_flat_records, 1);
   rb_define_method(cls_dbm, "export_keys_as_lines", (METHOD)dbm_export_keys_as_lines, 1);
   rb_define_method(cls_dbm, "inspect_details", (METHOD)dbm_inspect_details, 0);
   rb_define_method(cls_dbm, "open?", (METHOD)dbm_is_open, 0);

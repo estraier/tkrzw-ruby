@@ -545,8 +545,8 @@ class TkrzwTest < Test::Unit::TestCase
     end
   end
 
-  # Text tests.
-  def test_text
+  # Export tests.
+  def test_export
     dbm = DBM.new
     dest_path = _make_tmp_path("casket.txt")
     assert_equal(Status::SUCCESS, dbm.open("", true))
@@ -555,7 +555,20 @@ class TkrzwTest < Test::Unit::TestCase
       value = "%d" % i
       assert_equal(Status::SUCCESS, dbm.set(key, value, false))
     end
-    assert_equal(Status::SUCCESS, dbm.export_keys_as_lines(dest_path))
+    file = Tkrzw::File.new
+    assert_equal(Status::SUCCESS, file.open(dest_path, true, truncate: true))
+    assert_equal(Status::SUCCESS, dbm.export_records_to_flat_records(file))
+    assert_equal(Status::SUCCESS, dbm.clear)
+    assert_equal(0, dbm.count)
+    assert_equal(Status::SUCCESS, dbm.import_records_from_flat_records(file))
+    assert_equal(100, dbm.count)
+    assert_equal(Status::SUCCESS, file.close)
+    file.destruct
+    file = Tkrzw::File.new
+    assert_equal(Status::SUCCESS, file.open(dest_path, true, truncate: true))
+    assert_equal(Status::SUCCESS, dbm.export_keys_as_lines(file))
+    assert_equal(Status::SUCCESS, file.close)
+    file.destruct
     assert_equal(Status::SUCCESS, dbm.close)
     dbm.destruct
     file = Tkrzw::File.new
@@ -574,6 +587,7 @@ class TkrzwTest < Test::Unit::TestCase
       file.search("foo", "00000100", 3)
     end
     assert_equal(Status::SUCCESS, file.close)
+    file.destruct
   end
 
   # File tests.
