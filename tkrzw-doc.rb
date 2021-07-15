@@ -264,7 +264,7 @@ module Tkrzw
     # - block_size (int): The block size to which all blocks should be aligned.
     # - access_options (str): Values separated by colon.  "direct" for direct I/O.  "sync" for synchrnizing I/O, "padding" for file size alignment by padding, "pagecache" for the mini page cache in the process.
     # If the optional parameter "num_shards" is set, the database is sharded into multiple shard files.  Each file has a suffix like "-00003-of-00015".  If the value is 0, the number of shards is set by patterns of the existing files, or 1 if they doesn't exist.
-    def open(path, writable, params = {})
+    def open(path, writable, **params)
       # (native code)
     end
 
@@ -299,9 +299,10 @@ module Tkrzw
     end
 
     # Sets multiple records of the keyword arguments.
-    # @param records Records to store.  Existing records with the same keys are overwritten.
+    # @param overwrite Whether to overwrite the existing value if there's a record with the same key.  If true, the existing value is overwritten by the new value.  If false, the operation is given up and an error status is returned.
+    # @param records Records to store.
     # @return The result status.
-    def set_multi(records = {})
+    def set_multi(overwrite=true, **records)
       # (native code)
     end
 
@@ -342,6 +343,14 @@ module Tkrzw
     # @return The result status.
     # If there's no existing record, the value is set without the delimiter.
     def append(key, value, delim="")
+      # (native code)
+    end
+
+    # Appends data to multiple records of the keyword arguments.
+    # @param delim The delimiter to put after the existing record.
+    # @param records Records to append.
+    # @return The result status.
+    def append_multi(delim="", **records)
       # (native code)
     end
 
@@ -691,7 +700,7 @@ module Tkrzw
     # For the file "PositionalParallelFile" and "PositionalAtomicFile", these optional parameters are supported.
     # - block_size (int): The block size to which all blocks should be aligned.
     # - access_options (str): Values separated by colon.  "direct" for direct I/O.  "sync" for synchrnizing I/O, "padding" for file size alignment by padding, "pagecache" for the mini page cache in the process.
-    def open(path, writable, params = {})
+    def open(path, writable, **params)
       # (native code)
     end
 

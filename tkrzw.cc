@@ -679,7 +679,7 @@ static VALUE dbm_get_multi(VALUE vself, VALUE vkeys) {
   std::vector<std::string_view> key_views(keys.begin(), keys.end());
   std::map<std::string, std::string> records;
   NativeFunction(sdbm->concurrent, [&]() {
-      records = sdbm->dbm->GetMulti(key_views);
+      sdbm->dbm->GetMulti(key_views, &records);
     });
   volatile VALUE vhash = rb_hash_new();
   for (const auto& record : records) {
@@ -718,8 +718,14 @@ static VALUE dbm_set_multi(int argc, VALUE* argv, VALUE vself) {
   if (sdbm->dbm == nullptr) {
     rb_raise(rb_eRuntimeError, "not opened database");
   }
-  volatile VALUE vrecords;
-  rb_scan_args(argc, argv, "1", &vrecords);
+  volatile VALUE voverwrite, vrecords;
+  rb_scan_args(argc, argv, "02", &voverwrite, &vrecords);
+  bool overwrite = true;
+  if (argc <= 1 && TYPE(voverwrite) == T_HASH) {
+    vrecords = voverwrite;
+  } else {
+    overwrite = argc > 0 ? RTEST(voverwrite) : true;
+  }
   const auto& records = HashToMap(vrecords);
   std::map<std::string_view, std::string_view> record_views;
   for (const auto& record : records) {
@@ -728,7 +734,7 @@ static VALUE dbm_set_multi(int argc, VALUE* argv, VALUE vself) {
   }
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(sdbm->concurrent, [&]() {
-      status = sdbm->dbm->SetMulti(record_views);
+      status = sdbm->dbm->SetMulti(record_views, overwrite);
     });
   return MakeStatusValue(std::move(status));
 }
@@ -893,6 +899,34 @@ static VALUE dbm_append(int argc, VALUE* argv, VALUE vself) {
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(sdbm->concurrent, [&]() {
       status = sdbm->dbm->Append(key, value, delim);
+    });
+  return MakeStatusValue(std::move(status));
+}
+
+// Implementation of DBM#append_multi.
+static VALUE dbm_append_multi(int argc, VALUE* argv, VALUE vself) {
+  StructDBM* sdbm = nullptr;
+  Data_Get_Struct(vself, StructDBM, sdbm);
+  if (sdbm->dbm == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened database");
+  }
+  volatile VALUE vdelim, vrecords;
+  rb_scan_args(argc, argv, "02", &vdelim, &vrecords);
+  std::string_view delim = "";
+  if (argc <= 1 && TYPE(vdelim) == T_HASH) {
+    vrecords = vdelim;
+  } else {
+    delim = argc > 0 ? GetStringView(vdelim) : std::string_view("");
+  }
+  const auto& records = HashToMap(vrecords);
+  std::map<std::string_view, std::string_view> record_views;
+  for (const auto& record : records) {
+    record_views.emplace(std::make_pair(
+        std::string_view(record.first), std::string_view(record.second)));
+  }
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sdbm->concurrent, [&]() {
+      status = sdbm->dbm->AppendMulti(record_views, delim);
     });
   return MakeStatusValue(std::move(status));
 }
@@ -1454,6 +1488,7 @@ static void DefineDBM() {
   rb_define_method(cls_dbm, "remove_multi", (METHOD)dbm_remove_multi, -2);
   rb_define_method(cls_dbm, "remove_and_get", (METHOD)dbm_remove_and_get, 1);
   rb_define_method(cls_dbm, "append", (METHOD)dbm_append, -1);
+  rb_define_method(cls_dbm, "append_multi", (METHOD)dbm_append_multi, -1);
   rb_define_method(cls_dbm, "compare_exchange", (METHOD)dbm_compare_exchange, 3);
   rb_define_method(cls_dbm, "increment", (METHOD)dbm_increment, -1);
   rb_define_method(cls_dbm, "compare_exchange_multi", (METHOD)dbm_compare_exchange_multi, 2);
