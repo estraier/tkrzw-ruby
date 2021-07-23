@@ -201,7 +201,7 @@ module Tkrzw
       # (native code)
     end
 
-    # Released the resource explicitly.
+    # Releases the resource explicitly.
     def destruct()
       # (native code)
     end
@@ -570,7 +570,7 @@ module Tkrzw
       # (native code)
     end
 
-    # Released the resource explicitly.
+    # Releases the resource explicitly.
     def destruct()
       # (native code)
     end
@@ -686,7 +686,7 @@ module Tkrzw
       # (native code)
     end
 
-    # Released the resource explicitly.
+    # Releases the resource explicitly.
     def destruct()
       # (native code)
     end
