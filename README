@@ -7,6 +7,9 @@ Please read the following documents.
   COPYING           - license
   CONTRIBUTING.md   - how to contribute
 
+You should install the latest version of Tkrzw to make sure the
+compatibility.
+
 To build the library, Ruby 2.5 or later version is required.
 Then, run these commands.
 
@@ -14,6 +17,8 @@ Then, run these commands.
   make
   ruby check.rb
   sudo make install
+
+See https://dbmx.net/tkrzw/api-ruby/ for details of the API.
 
 Thanks.
 
