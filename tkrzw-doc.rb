@@ -506,6 +506,7 @@ module Tkrzw
   
     # Makes an iterator for each record.
     # @return The iterator for each record.
+    # Every iterator should be destructed explicitly by the "destruct" method.
     def make_iterator()
       # (native code)
     end
