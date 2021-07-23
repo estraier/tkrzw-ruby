@@ -1240,6 +1240,17 @@ static VALUE dbm_is_open(VALUE vself) {
   return sdbm->dbm == nullptr ? Qfalse : Qtrue;
 }
 
+// Implementation of DBM#writable?.
+static VALUE dbm_is_writable(VALUE vself) {
+  StructDBM* sdbm = nullptr;
+  Data_Get_Struct(vself, StructDBM, sdbm);
+  if (sdbm->dbm == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened database");
+  }
+  const bool writable = sdbm->dbm->IsWritable();;
+  return writable ? Qtrue : Qfalse;
+}
+
 // Implementation of DBM#healthy?.
 static VALUE dbm_is_healthy(VALUE vself) {
   StructDBM* sdbm = nullptr;
@@ -1247,10 +1258,7 @@ static VALUE dbm_is_healthy(VALUE vself) {
   if (sdbm->dbm == nullptr) {
     rb_raise(rb_eRuntimeError, "not opened database");
   }
-  bool healthy = false;
-  NativeFunction(sdbm->concurrent, [&]() {
-      healthy = sdbm->dbm->IsHealthy();
-    });
+  const bool healthy = sdbm->dbm->IsHealthy();
   return healthy ? Qtrue : Qfalse;
 }
 
@@ -1261,10 +1269,7 @@ static VALUE dbm_is_ordered(VALUE vself) {
   if (sdbm->dbm == nullptr) {
     rb_raise(rb_eRuntimeError, "not opened database");
   }
-  bool ordered = false;
-  NativeFunction(sdbm->concurrent, [&]() {
-      ordered = sdbm->dbm->IsOrdered();
-    });
+  const bool ordered = sdbm->dbm->IsOrdered();
   return ordered ? Qtrue : Qfalse;
 }
 
@@ -1508,6 +1513,7 @@ static void DefineDBM() {
   rb_define_method(cls_dbm, "export_keys_as_lines", (METHOD)dbm_export_keys_as_lines, 1);
   rb_define_method(cls_dbm, "inspect_details", (METHOD)dbm_inspect_details, 0);
   rb_define_method(cls_dbm, "open?", (METHOD)dbm_is_open, 0);
+  rb_define_method(cls_dbm, "writable?", (METHOD)dbm_is_writable, 0);
   rb_define_method(cls_dbm, "healthy?", (METHOD)dbm_is_healthy, 0);
   rb_define_method(cls_dbm, "ordered?", (METHOD)dbm_is_ordered, 0);
   rb_define_method(cls_dbm, "search", (METHOD)dbm_search, -1);

@@ -477,6 +477,12 @@ module Tkrzw
       # (native code)
     end
 
+    # Checks whether the database is writable.
+    # @return True if the database is writable, or false if not.
+    def writable?()
+      # (native code)
+    end
+
     # Checks whether the database condition is healthy.
     # @return True if the database condition is healthy, or false if not.
     def healthy?()

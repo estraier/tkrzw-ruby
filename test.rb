@@ -158,6 +158,7 @@ class TkrzwTest < Test::Unit::TestCase
         dbm.path.include?(path)
       end
       assert_true(dbm.open?)
+      assert_true(dbm.writable?)
       assert_true(dbm.healthy?)
       if ["TreeDBM", "SkipDBM", "BabyDBM", "StdTreeDBM"].include?(class_name)
         assert_true(dbm.ordered?)
