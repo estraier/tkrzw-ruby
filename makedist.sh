@@ -14,7 +14,7 @@ then
   make distclean
 fi
 
-rm -rf casket casket* *~ *.tmp *.tkh *.tkt *.tks *.gem hoge moge tako ika
+rm -rf casket casket* *~ *.tmp *.tkh *.tkt *.tks *.flat *.log *.gem hoge moge tako ika uni
 rm -rf api-doc
 
 cd ..
