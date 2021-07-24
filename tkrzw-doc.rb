@@ -40,7 +40,7 @@ module Tkrzw
 
     # Primary hash function for the hash database.
     # @param data The data to calculate the hash value for.
-    # @param num_buckets The number of buckets of the hash table.  If it is omitted, 1<<64 is set.
+    # @param num_buckets The number of buckets of the hash table.  If it is omitted, UINT64MAX is set.
     # @return The hash value.
     def self.primary_hash(data, num_buckets=nil)
       # (native code)
@@ -48,7 +48,7 @@ module Tkrzw
 
     # Secondary hash function for sharding.
     # @param data The data to calculate the hash value for.
-    # @param num_shards The number of shards.  If it is omitted, 1<<64 is set.
+    # @param num_shards The number of shards.  If it is omitted, UINT64MAX is set.
     # @return The hash value.
     def self.secondary_hash(data, num_shards=nil)
       # (native code)
