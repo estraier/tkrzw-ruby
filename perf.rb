@@ -47,7 +47,7 @@ def main
       rnd_state = Random.new(thid)
       (0...num_iterations).each do |i|
         if is_random
-          key_num = rnd_state.rand(num_iterations)
+          key_num = rnd_state.rand(num_iterations * num_threads)
         else
           key_num = thid * num_iterations + i
         end
@@ -84,7 +84,7 @@ def main
       rnd_state = Random.new(thid)
       (0...num_iterations).each do |i|
         if is_random
-          key_num = rnd_state.rand(num_iterations)
+          key_num = rnd_state.rand(num_iterations * num_threads)
         else
           key_num = thid * num_iterations + i
         end
@@ -124,7 +124,7 @@ def main
       rnd_state = Random.new(thid)
       (0...num_iterations).each do |i|
         if is_random
-          key_num = rnd_state.rand(num_iterations)
+          key_num = rnd_state.rand(num_iterations * num_threads)
         else
           key_num = thid * num_iterations + i
         end
