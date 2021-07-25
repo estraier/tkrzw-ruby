@@ -605,6 +605,7 @@ class TkrzwTest < Test::Unit::TestCase
     assert_equal(10, file.append("FGH"))
     assert_equal(13, file.append("IJ"))
     assert_equal(15, file.get_size)
+    assert_true(file.get_path.index("casket.txt") > 0)
     assert_equal(Status::SUCCESS, file.synchronize(false))
     assert_equal(Status::SUCCESS, file.truncate(12))
     assert_equal(12, file.get_size)

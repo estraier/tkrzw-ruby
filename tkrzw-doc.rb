@@ -768,6 +768,12 @@ module Tkrzw
       # (native code)
     end
 
+    # Gets the path of the file.
+    # @return The path of the file or nil on failure.
+    def get_path()
+      # (native code)
+    end
+
     # Searches the file and get lines which match a pattern.
     # @param mode The search mode.  "contain" extracts lines containing the pattern.  "begin" extracts lines beginning with the pattern.  "end" extracts lines ending with the pattern.  "regex" extracts lines partially matches the pattern of a regular expression.  "edit" extracts lines whose edit distance to the UTF-8 pattern is the least.  "editbin" extracts lines whose edit distance to the binary pattern is the least.
     # @param pattern The pattern for matching.

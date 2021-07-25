@@ -2045,7 +2045,25 @@ static VALUE file_get_size(VALUE vself) {
   }
   return Qnil;
 }
-  
+
+// Implementation of File#get_path.
+static VALUE file_get_path(VALUE vself) {
+  StructFile* sfile = nullptr;
+  Data_Get_Struct(vself, StructFile, sfile);
+  if (sfile->file == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed File");
+  }
+  std::string path;
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sfile->concurrent, [&]() {
+      status = sfile->file->GetPath(&path);
+    });
+  if (status == tkrzw::Status::SUCCESS) {
+    return rb_str_new(path.data(), path.size());
+  }
+  return Qnil;
+}
+
 // Implementation of File#search.
 static VALUE file_search(int argc, VALUE* argv, VALUE vself) {
   StructFile* sfile = nullptr;
@@ -2144,6 +2162,7 @@ static void DefineFile() {
   rb_define_method(cls_file, "truncate", (METHOD)file_truncate, 1);
   rb_define_method(cls_file, "synchronize", (METHOD)file_synchronize, -1);
   rb_define_method(cls_file, "get_size", (METHOD)file_get_size, 0);
+  rb_define_method(cls_file, "get_path", (METHOD)file_get_path, 0);
   rb_define_method(cls_file, "search", (METHOD)file_search, -1);
   rb_define_method(cls_file, "to_s", (METHOD)file_to_s, 0);
   rb_define_method(cls_file, "inspect", (METHOD)file_inspect, 0);
