@@ -1158,58 +1158,58 @@ static VALUE dbm_export(VALUE vself, VALUE vdestdbm) {
 }
 
 // Implementation of DBM#export_records_to_flat_records.
-static VALUE dbm_export_records_to_flat_records(VALUE vself, VALUE vfile) {
+static VALUE dbm_export_records_to_flat_records(VALUE vself, VALUE vdest_file) {
   StructDBM* sdbm = nullptr;
   Data_Get_Struct(vself, StructDBM, sdbm);
   if (sdbm->dbm == nullptr) {
     rb_raise(rb_eRuntimeError, "not opened database");
   }
-  StructFile* sfile = nullptr;
-  Data_Get_Struct(vfile, StructFile, sfile);
-  if (sfile->file == nullptr) {
+  StructFile* sdest_file = nullptr;
+  Data_Get_Struct(vdest_file, StructFile, sdest_file);
+  if (sdest_file->file == nullptr) {
     rb_raise(rb_eRuntimeError, "not opened file");
   }
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(sdbm->concurrent, [&]() {
-      status = tkrzw::ExportDBMRecordsToFlatRecords(sdbm->dbm.get(),sfile->file.get());
+      status = tkrzw::ExportDBMRecordsToFlatRecords(sdbm->dbm.get(), sdest_file->file.get());
     });
   return MakeStatusValue(std::move(status));
 }
 
 // Implementation of DBM#import_records_from_flat_records.
-static VALUE dbm_import_records_from_flat_records(VALUE vself, VALUE vfile) {
+static VALUE dbm_import_records_from_flat_records(VALUE vself, VALUE vsrc_file) {
   StructDBM* sdbm = nullptr;
   Data_Get_Struct(vself, StructDBM, sdbm);
   if (sdbm->dbm == nullptr) {
     rb_raise(rb_eRuntimeError, "not opened database");
   }
-  StructFile* sfile = nullptr;
-  Data_Get_Struct(vfile, StructFile, sfile);
-  if (sfile->file == nullptr) {
+  StructFile* ssrc_file = nullptr;
+  Data_Get_Struct(vsrc_file, StructFile, ssrc_file);
+  if (ssrc_file->file == nullptr) {
     rb_raise(rb_eRuntimeError, "not opened file");
   }
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(sdbm->concurrent, [&]() {
-      status = tkrzw::ImportDBMRecordsFromFlatRecords(sdbm->dbm.get(),sfile->file.get());
+      status = tkrzw::ImportDBMRecordsFromFlatRecords(sdbm->dbm.get(), ssrc_file->file.get());
     });
   return MakeStatusValue(std::move(status));
 }
 
 // Implementation of DBM#export_keys_as_lines.
-static VALUE dbm_export_keys_as_lines(VALUE vself, VALUE vfile) {
+static VALUE dbm_export_keys_as_lines(VALUE vself, VALUE vdest_file) {
   StructDBM* sdbm = nullptr;
   Data_Get_Struct(vself, StructDBM, sdbm);
   if (sdbm->dbm == nullptr) {
     rb_raise(rb_eRuntimeError, "not opened database");
   }
-  StructFile* sfile = nullptr;
-  Data_Get_Struct(vfile, StructFile, sfile);
-  if (sfile->file == nullptr) {
+  StructFile* sdest_file = nullptr;
+  Data_Get_Struct(vdest_file, StructFile, sdest_file);
+  if (sdest_file->file == nullptr) {
     rb_raise(rb_eRuntimeError, "not opened file");
   }
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(sdbm->concurrent, [&]() {
-      status = tkrzw::ExportDBMKeysAsLines(sdbm->dbm.get(),sfile->file.get());
+      status = tkrzw::ExportDBMKeysAsLines(sdbm->dbm.get(), sdest_file->file.get());
     });
   return MakeStatusValue(std::move(status));
 }
