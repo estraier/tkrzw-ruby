@@ -29,6 +29,7 @@ class TkrzwTest < Test::Unit::TestCase
   def test_utility
     assert_match(/^\d+\.\d+\.\d+$/ , Utility::VERSION)
     assert_true(Utility::OS_NAME.size > 0)
+    assert_true(Utility::PAGE_SIZE > 0)
     assert_equal(-2 ** 31, Utility::INT32MIN)
     assert_equal(2 ** 31 - 1, Utility::INT32MAX)
     assert_equal(2 ** 32 - 1, Utility::UINT32MAX)

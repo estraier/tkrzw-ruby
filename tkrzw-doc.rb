@@ -13,6 +13,8 @@ module Tkrzw
     VERSION = "0.0.0"
     # The recognized OS name.
     OS_NAME = "unknown"
+    # The size of a memory page on the OS.
+    PAGE_SIZE = 4096
     # The minimum value of int32.
     INT32MIN = -2 ** 31
     # The maximum value of int32.
