@@ -560,10 +560,10 @@ class TkrzwTest < Test::Unit::TestCase
     end
     file = Tkrzw::File.new
     assert_equal(Status::SUCCESS, file.open(dest_path, true, truncate: true))
-    assert_equal(Status::SUCCESS, dbm.export_records_to_flat_records(file))
+    assert_equal(Status::SUCCESS, dbm.export_to_flat_records(file))
     assert_equal(Status::SUCCESS, dbm.clear)
     assert_equal(0, dbm.count)
-    assert_equal(Status::SUCCESS, dbm.import_records_from_flat_records(file))
+    assert_equal(Status::SUCCESS, dbm.import_from_flat_records(file))
     assert_equal(100, dbm.count)
     assert_equal(Status::SUCCESS, file.close)
     file.destruct

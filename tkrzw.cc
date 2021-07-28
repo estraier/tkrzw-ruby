@@ -1157,8 +1157,8 @@ static VALUE dbm_export(VALUE vself, VALUE vdestdbm) {
   return MakeStatusValue(std::move(status));
 }
 
-// Implementation of DBM#export_records_to_flat_records.
-static VALUE dbm_export_records_to_flat_records(VALUE vself, VALUE vdest_file) {
+// Implementation of DBM#export_to_flat_records.
+static VALUE dbm_export_to_flat_records(VALUE vself, VALUE vdest_file) {
   StructDBM* sdbm = nullptr;
   Data_Get_Struct(vself, StructDBM, sdbm);
   if (sdbm->dbm == nullptr) {
@@ -1171,13 +1171,13 @@ static VALUE dbm_export_records_to_flat_records(VALUE vself, VALUE vdest_file) {
   }
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(sdbm->concurrent, [&]() {
-      status = tkrzw::ExportDBMRecordsToFlatRecords(sdbm->dbm.get(), sdest_file->file.get());
+      status = tkrzw::ExportDBMToFlatRecords(sdbm->dbm.get(), sdest_file->file.get());
     });
   return MakeStatusValue(std::move(status));
 }
 
-// Implementation of DBM#import_records_from_flat_records.
-static VALUE dbm_import_records_from_flat_records(VALUE vself, VALUE vsrc_file) {
+// Implementation of DBM#import_from_flat_records.
+static VALUE dbm_import_from_flat_records(VALUE vself, VALUE vsrc_file) {
   StructDBM* sdbm = nullptr;
   Data_Get_Struct(vself, StructDBM, sdbm);
   if (sdbm->dbm == nullptr) {
@@ -1190,7 +1190,7 @@ static VALUE dbm_import_records_from_flat_records(VALUE vself, VALUE vsrc_file) 
   }
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(sdbm->concurrent, [&]() {
-      status = tkrzw::ImportDBMRecordsFromFlatRecords(sdbm->dbm.get(), ssrc_file->file.get());
+      status = tkrzw::ImportDBMFromFlatRecords(sdbm->dbm.get(), ssrc_file->file.get());
     });
   return MakeStatusValue(std::move(status));
 }
@@ -1507,10 +1507,8 @@ static void DefineDBM() {
   rb_define_method(cls_dbm, "synchronize", (METHOD)dbm_synchronize, -1);
   rb_define_method(cls_dbm, "copy_file_data", (METHOD)dbm_copy_file_data, 1);
   rb_define_method(cls_dbm, "export", (METHOD)dbm_export, 1);
-  rb_define_method(cls_dbm, "export_records_to_flat_records",
-                   (METHOD)dbm_export_records_to_flat_records, 1);
-  rb_define_method(cls_dbm, "import_records_from_flat_records",
-                   (METHOD)dbm_import_records_from_flat_records, 1);
+  rb_define_method(cls_dbm, "export_to_flat_records", (METHOD)dbm_export_to_flat_records, 1);
+  rb_define_method(cls_dbm, "import_from_flat_records", (METHOD)dbm_import_from_flat_records, 1);
   rb_define_method(cls_dbm, "export_keys_as_lines", (METHOD)dbm_export_keys_as_lines, 1);
   rb_define_method(cls_dbm, "inspect_details", (METHOD)dbm_inspect_details, 0);
   rb_define_method(cls_dbm, "open?", (METHOD)dbm_is_open, 0);

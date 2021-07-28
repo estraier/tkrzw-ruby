@@ -2,7 +2,7 @@
 
 set -eux
 
-PACKAGE_NAME="tkrzw-ruby-0.1.16"
+PACKAGE_NAME="tkrzw-ruby-0.1.17"
 
 LANG=C
 LC_ALL=C

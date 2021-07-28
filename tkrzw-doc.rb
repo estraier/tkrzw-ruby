@@ -448,14 +448,14 @@ module Tkrzw
     # @param dest_file The file object to write records in.
     # @return The result status.
     # A flat record file contains a sequence of binary records without any high level structure so it is useful as a intermediate file for data migration.
-    def export_records_to_flat_records(dest_file)
+    def export_to_flat_records(dest_file)
       # (native code)
     end
 
     # Imports records to a database from a flat record file.
     # @param src_file The file object to read records from.
     # @return The result status.
-    def import_records_from_flat_records(src_file)
+    def import_from_flat_records(src_file)
       # (native code)
     end
 
