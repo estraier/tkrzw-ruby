@@ -61,11 +61,17 @@ class TkrzwTest < Test::Unit::TestCase
     status.set(Status::NOT_FOUND_ERROR, "foobar")
     assert_equal("NOT_FOUND_ERROR: foobar", status.to_s)
     assert_false(status.ok?)
+    s2 = Status.new(Status::NOT_IMPLEMENTED_ERROR, "void")
+    status.join(s2)
+    assert_equal("NOT_FOUND_ERROR: foobar", status.to_s)
+    status.set(Status::SUCCESS, "OK")
+    status.join(s2)
+    assert_equal("NOT_IMPLEMENTED_ERROR: void", status.to_s)
     expt = assert_raises StatusException do
       status.or_die
     end
     assert_true(expt.is_a?(StatusException))
-    assert_equal("NOT_FOUND_ERROR: foobar", expt.message)
+    assert_equal("NOT_IMPLEMENTED_ERROR: void", expt.message)
     assert_equal(status, expt.status)
   end
 

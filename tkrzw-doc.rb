@@ -109,6 +109,12 @@ module Tkrzw
       # (native code)
     end
 
+    # Assigns the internal state from another status object only if the current state is success.
+    # @param rhs The status object.
+    def join(rht)
+      # (native code)
+    end
+
     # Gets the status code.
     # @return The status code.
     def code()

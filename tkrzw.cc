@@ -357,6 +357,19 @@ static VALUE status_set(int argc, VALUE* argv, VALUE vself) {
   return Qnil;
 }
 
+// Implementation of Status#join.
+static VALUE status_join(VALUE vself, VALUE vrht) {
+  tkrzw::Status* status = nullptr;
+  Data_Get_Struct(vself, tkrzw::Status, status);
+  if (!rb_obj_is_instance_of(vrht, cls_status)) {
+    rb_raise(rb_eRuntimeError, "not a status");
+  }
+  tkrzw::Status* rht = nullptr;
+  Data_Get_Struct(vrht, tkrzw::Status, rht);
+  *status |= *rht;
+  return Qnil;
+}
+
 // Implementation of Status#code.
 static VALUE status_code(VALUE vself) {
   tkrzw::Status* status = nullptr;
@@ -486,6 +499,7 @@ static void DefineStatus() {
                   INT2FIX(tkrzw::Status::APPLICATION_ERROR));
   rb_define_private_method(cls_status, "initialize", (METHOD)status_initialize, -1);
   rb_define_method(cls_status, "set", (METHOD)status_set, -1);
+  rb_define_method(cls_status, "join", (METHOD)status_join, 1);
   rb_define_method(cls_status, "code", (METHOD)status_code, 0);
   rb_define_method(cls_status, "message", (METHOD)status_message, 0);
   rb_define_method(cls_status, "ok?", (METHOD)status_ok, 0);
