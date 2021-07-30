@@ -309,7 +309,7 @@ module Tkrzw
     # Sets multiple records of the keyword arguments.
     # @param overwrite Whether to overwrite the existing value if there's a record with the same key.  If true, the existing value is overwritten by the new value.  If false, the operation is given up and an error status is returned.
     # @param records Records to store.
-    # @return The result status.
+    # @return The result status.  If there are records avoiding overwriting, DUPLICATION_ERROR is returned.
     def set_multi(overwrite=true, **records)
       # (native code)
     end
