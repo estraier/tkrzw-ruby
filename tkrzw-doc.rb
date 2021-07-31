@@ -170,7 +170,6 @@ module Tkrzw
     def !=(rhs)
       # (native code)
     end
-
   end
 
   # Exception to convey the status of operations.
