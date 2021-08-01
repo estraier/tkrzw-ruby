@@ -139,7 +139,7 @@ module Tkrzw
       # (native code)
     end
 
-    # Returns A string representation of the content.
+    # Returns a string representation of the content.
     # @return The string representation of the content.
     def to_s()
       # (native code)
@@ -151,7 +151,7 @@ module Tkrzw
       # (native code)
     end
 
-    # Returns A string representation of the object.
+    # Returns a string representation of the object.
     # @return The string representation of the object.
     def inspect()
       # (native code)
@@ -172,6 +172,35 @@ module Tkrzw
     end
   end
 
+  # Future containing a status object and extra data.
+  class Future
+    # Returns a string representation of the content.
+    # @return The string representation of the content.
+    def to_s()
+      # (native code)
+    end
+
+    # Returns a string representation of the object.
+    # @return The string representation of the object.
+    def inspect()
+      # (native code)
+    end
+
+    # Waits for the operation to be done.
+    # @param timeout The waiting time in seconds.  If it is negative, no timeout is set.
+    # @return True if the operation has done.  False if timeout occurs.
+    def wait(timeout=-1)
+      # (native code)
+    end
+
+    # Waits for the operation to be done and gets the result status.
+    # @return The result status and extra data if any.  The existence and the type of extra data depends on the operation which makes the future.  For DBM#get, a tuple of the status and the retrieved value is returned.  For DBM#set and DBM#remove, the status object itself is returned.
+    # This can be called only once for a future object.
+    def get()
+      # (native code)
+    end
+  end
+
   # Exception to convey the status of operations.
   class StatusException < RuntimeError
     # Sets the status.
@@ -180,13 +209,13 @@ module Tkrzw
       # (native code)
     end
 
-    # Returns A string representation of the content.
+    # Returns a string representation of the content.
     # @return The string representation of the content.
     def to_s()
       # (native code)
     end
 
-    # Returns A string representation of the object.
+    # Returns a string representation of the object.
     # @return The string representation of the object.
     def inspect()
       # (native code)
@@ -202,7 +231,6 @@ module Tkrzw
   # Polymorphic database manager.
   # All operations except for "open" and "close" are thread-safe; Multiple threads can access the same database concurrently.  You can specify a data structure when you call the "open" method.  Every opened database must be closed explicitly by the "close" method to avoid data corruption.  Moreover, every unused database object should be destructed by the "destruct" method to free resources.
   class DBM
-
     # Does nothing especially.
     def initialize()
       # (native code)
@@ -430,6 +458,7 @@ module Tkrzw
     # Synchronizes the content of the database to the file system.
     # @param hard True to do physical synchronization with the hardware or false to do only logical synchronization with the file system.
     # @param params Optional parameters of a hash object.
+    # @return The result status.
     # Only SkipDBM uses the optional parameters.  The "merge" parameter specifies paths of databases to merge, separated by colon.  The "reducer" parameter specifies the reducer to apply to records of the same key.  "ReduceToFirst", "ReduceToSecond", "ReduceToLast", etc are supported.
     def synchronize(hard, params={})
       # (native code)
@@ -528,7 +557,7 @@ module Tkrzw
       # (native code)
     end
 
-    # Returns A string representation of the content.
+    # Returns a string representation of the content.
     # @return The string representation of the content.
     def to_s()
       # (native code)
@@ -540,7 +569,7 @@ module Tkrzw
       # (native code)
     end
 
-    # Returns A string representation of the object.
+    # Returns a string representation of the object.
     # @return The string representation of the object.
     def inspect()
       # (native code)
@@ -570,7 +599,6 @@ module Tkrzw
   # Iterator for each record.
   # An iterator is made by the "make_iterator" method of DBM.  Every unused iterator object should be destructed explicitly by the "destruct" method to free resources.
   class Iterator
-
     # Initializes the iterator.
     # @param dbm The database to scan.
     def initialize(dbm)
@@ -670,24 +698,202 @@ module Tkrzw
       # (native code)
     end
 
-    # Returns A string representation of the content.
+    # Returns a string representation of the content.
     # @return The string representation of the content.
     def to_s()
       # (native code)
     end
 
-    # Returns A string representation of the object.
+    # Returns a string representation of the object.
+    # @return The string representation of the object.
+    def inspect()
+      # (native code)
+    end
+  end
+
+  # Asynchronous database manager adapter.
+  # This class is a wrapper of DBM for asynchronous operations.  A task queue with a thread pool is used inside.  Every method except for the constructor and the destructor is run by a thread in the thread pool and the result is set in the future oject of the return value.  The caller can ignore the future object if it is not necessary.  The Destruct method waits for all tasks to be done.  Therefore, the destructor should be called before the database is closed.
+  class AsyncDBM
+    # Sets up the task queue.
+    # @param dbm A database object which has been opened.
+    # @param num_worker_threads: The number of threads in the internal thread pool.
+    def initialize(dbm, num_worker_threads)
+      # (native code)
+    end
+
+    # Returns a string representation of the content.
+    # @return The string representation of the content.
+    def to_s()
+      # (native code)
+    end
+
+    # Returns a string representation of the object.
     # @return The string representation of the object.
     def inspect()
       # (native code)
     end
 
+    # Destructs the asynchronous database adapter.
+    # This method waits for all tasks to be done.
+    def destruct()
+      # (native code)
+    end
+
+    # Gets the value of a record of a key.
+    # @param key The key of the record.
+    # @return The future for the result status and the value of the matching record.
+    def get(key)
+      # (native code)
+    end
+
+    # Gets the values of multiple records of keys.
+    # @param keys The keys of records to retrieve.
+    # @return The future for the result status and a map of retrieved records.  Keys which don't match existing records are ignored.
+    def get_multi(*keys)
+      # (native code)
+    end
+
+    # Sets a record of a key and a value.
+    # @param key The key of the record.
+    # @param value The value of the record.
+    # @param overwrite Whether to overwrite the existing value.  It can be omitted and then false is set.
+    # @return The future for the result status.  If overwriting is abandoned, DUPLICATION_ERROR is set.
+    def set(key, value, overwrite=true)
+      # (native code)
+    end
+
+    # Sets multiple records of the keyword arguments.
+    # @param overwrite Whether to overwrite the existing value if there's a record with the same key.  If true, the existing value is overwritten by the new value.  If false, the operation is given up and an error status is returned.
+    # @param records Records to store.
+    # @return The future for the result status.  If there are records avoiding overwriting, DUPLICATION_ERROR is set.
+    def set_multi(overwrite=true, **records)
+      # (native code)
+    end
+
+    # Removes a record of a key.
+    # @param key The key of the record.
+    # @return The future for the result status.  If there's no matching record, NOT_FOUND_ERROR is set.
+    def remove(key)
+      # (native code)
+    end
+
+    # Removes records of keys.
+    # @param key The keys of the records.
+    # @return The future for the result status.  If there are missing records, NOT_FOUND_ERROR is set.
+    def remove_multi(keys)
+      # (native code)
+    end
+
+    # Appends data at the end of a record of a key.
+    # @param key The key of the record.
+    # @param value The value to append.
+    # @param delim The delimiter to put after the existing record.
+    # @return The future for the result status.
+    # If there's no existing record, the value is set without the delimiter.
+    def append(key, value, delim="")
+      # (native code)
+    end
+
+    # Appends data to multiple records of the keyword arguments.
+    # @param delim The delimiter to put after the existing record.
+    # @param records Records to append.
+    # @return The future for the result status.
+    def append_multi(delim="", **records)
+      # (native code)
+    end
+
+    # Compares the value of a record and exchanges if the condition meets.
+    # @param key The key of the record.
+    # @param expected The expected value.  If it is None, no existing record is expected.
+    # @param desired The desired value.  If it is nil, the record is to be removed.
+    # @return The future for the result status.  If the condition doesn't meet, INFEASIBLE_ERROR is set.
+    def compare_exchange(key, expected, desired)
+      # (native code)
+    end
+
+    # Increments the numeric value of a record.
+    # @param key The key of the record.
+    # @param inc The incremental value.  If it is Utility::INT64MIN, the current value is not changed and a new record is not created.
+    # @param init The initial value.
+    # @return The future for the result status and the current value.
+    # The record value is stored as an 8-byte big-endian integer.  Negative is also supported.
+    def increment(key, inc=1, init=0)
+      # (native code)
+    end
+
+    # Compares the values of records and exchanges if the condition meets.
+    # @param expected An array of pairs of the record keys and their expected values.  If the value is nil, no existing record is expected.
+    # @param desired An array of pairs of the record keys and their desired values.  If the value is nil, the record is to be removed.
+    # @return The future for the result status.  If the condition doesn't meet, INFEASIBLE_ERROR is set.
+    def compare_exchange_multi(expected, desired)
+      # (native code)
+    end
+
+    # Removes all records.
+    # @return The future for the result status.
+    def clear()
+      # (native code)
+    end
+
+    # Rebuilds the entire database.
+    # @param params Optional parameters of a hash object.
+    # @return The future for the result status.
+    # The optional parameters are the same as the "open" method.  Omitted tuning parameters are kept the same or implicitly optimized.
+    def rebuild(params={})
+      # (native code)
+    end
+
+    # Synchronizes the content of the database to the file system.
+    # @param hard True to do physical synchronization with the hardware or false to do only logical synchronization with the file system.
+    # @param params Optional parameters of a hash object.
+    # @return The future for the result status.
+    # Only SkipDBM uses the optional parameters.  The "merge" parameter specifies paths of databases to merge, separated by colon.  The "reducer" parameter specifies the reducer to apply to records of the same key.  "ReduceToFirst", "ReduceToSecond", "ReduceToLast", etc are supported.
+    def synchronize(hard, params={})
+      # (native code)
+    end
+
+    # Copies the content of the database file to another file.
+    # @param dest_path A path to the destination file.
+    # @return The future for the result status.
+    def copy_file_data(dest_path)
+      # (native code)
+    end
+  
+    # Exports all records to another database.
+    # @param dest_dbm The destination database.  The lefetime of the database object must last until the task finishes.
+    # @return The future for the result status.
+    def export(dest_dbm)
+      # (native code)
+    end
+
+    # Exports all records of a database to a flat record file.
+    # @param dest_file The file object to write records in.  The lefetime of the file object must last until the task finishes.
+    # @return The future for the result status.
+    # A flat record file contains a sequence of binary records without any high level structure so it is useful as a intermediate file for data migration.
+    def export_to_flat_records(dest_file)
+      # (native code)
+    end
+
+    # Imports records to a database from a flat record file.
+    # @param src_file The file object to read records from.  The lefetime of the file object must last until the task finishes.
+    # @return The future for the result status.
+    def import_from_flat_records(src_file)
+      # (native code)
+    end
+
+    # Searches the database and get keys which match a pattern.
+    # @param mode The search mode.  "contain" extracts keys containing the pattern.  "begin" extracts keys beginning with the pattern.  "end" extracts keys ending with the pattern.  "regex" extracts keys partially matches the pattern of a regular expression.  "edit" extracts keys whose edit distance to the UTF-8 pattern is the least.  "editbin" extracts keys whose edit distance to the binary pattern is the least.
+    # @param pattern The pattern for matching.
+    # @param capacity The maximum records to obtain.  0 means unlimited.
+    # @return The future for the result status and a list of keys matching the condition.
+    def search(mode, pattern, capacity=0)
+      # (native code)
+    end
   end
 
   # Generic file implementation.
   # All operations except for "open" and "close" are thread-safe; Multiple threads can access the same file concurrently.  You can specify a concrete class when you call the "open" method.  Every opened file must be closed explicitly by the "close" method to avoid data corruption.  Moreover, every unused file object should be destructed by the "destruct" method to free resources.
   class File
-
     # Initializes the file object.
     def initialize()
       # (native code)
@@ -788,13 +994,13 @@ module Tkrzw
       # (native code)
     end
 
-    # Returns A string representation of the content.
+    # Returns a string representation of the content.
     # @return The string representation of the content.
     def to_s()
       # (native code)
     end
 
-    # Returns A string representation of the object.
+    # Returns a string representation of the object.
     # @return The string representation of the object.
     def inspect()
       # (native code)

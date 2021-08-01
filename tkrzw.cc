@@ -38,14 +38,17 @@ VALUE mod_tkrzw;
 ID id_obj_to_str;
 ID id_obj_to_s;
 ID id_obj_to_i;
+ID id_obj_to_f;
 ID id_str_force_encoding;
 
 VALUE cls_util;
 VALUE cls_status;
+VALUE cls_future;
 VALUE cls_expt;
 ID id_expt_status;
 VALUE cls_dbm;
 VALUE cls_iter;
+VALUE cls_asyncdbm;
 VALUE cls_file;
 
 // Generates a string expression of an arbitrary object.
@@ -116,9 +119,35 @@ static int64_t GetInteger(VALUE vobj) {
   if (rb_respond_to(vobj, id_obj_to_i)) {
     return rb_funcall(vobj, id_obj_to_i, 0);
   }
-  char kbuf[64];
-  std::sprintf(kbuf, "#<Object:0x%llx>", (long long)rb_obj_id(vobj));
-  return rb_str_new2(kbuf);
+  return 0;
+}
+
+// Gets an real number value of a Ruby object. */
+static double GetFloat(VALUE vobj) {
+  switch (TYPE(vobj)) {
+    case T_FIXNUM: {
+      return FIX2LONG(vobj);
+    }
+    case T_BIGNUM: {
+      return NUM2LL(vobj);
+    }
+    case T_FLOAT: {
+      return NUM2DBL(vobj);
+    }
+    case T_NIL: {
+      return 0;
+    }
+    case T_TRUE: {
+      return 1;
+    }
+    case T_FALSE: {
+      return 0;
+    }
+  }
+  if (rb_respond_to(vobj, id_obj_to_f)) {
+    return rb_funcall(vobj, id_obj_to_f, 0);
+  }
+  return 0;
 }
 
 // Maps a Ruby hash object into a C++ map.
@@ -168,7 +197,8 @@ static void DefineModule() {
   mod_tkrzw = rb_define_module("Tkrzw");
   id_obj_to_str = rb_intern("to_str");
   id_obj_to_s = rb_intern("to_s");
-  id_obj_to_i = rb_intern("to_i");  
+  id_obj_to_i = rb_intern("to_i");
+  id_obj_to_f = rb_intern("to_f");
   id_str_force_encoding = rb_intern("force_encoding");
 }
 
@@ -213,6 +243,13 @@ static VALUE GetEncoding(std::string_view name) {
   return rb_funcall(rb_cEncoding, id_enc_find, 1, rb_str_new(name.data(), name.size()));
 }
 
+// Ruby wrapper of the Future object.
+struct StructFuture {
+  std::unique_ptr<tkrzw::StatusFuture> future;
+  bool concurrent = false;
+  volatile VALUE venc = Qnil;
+};
+
 // Ruby wrapper of the DBM object.
 struct StructDBM {
   std::unique_ptr<tkrzw::ParamDBM> dbm;
@@ -223,6 +260,13 @@ struct StructDBM {
 // Ruby wrapper of the Iterator object.
 struct StructIter {
   std::unique_ptr<tkrzw::DBM::Iterator> iter;
+  bool concurrent = false;
+  volatile VALUE venc = Qnil;
+};
+
+// Ruby wrapper of the AsyncDBM object.
+struct StructAsyncDBM {
+  std::unique_ptr<tkrzw::AsyncDBM> async;
   bool concurrent = false;
   volatile VALUE venc = Qnil;
 };
@@ -509,6 +553,155 @@ static void DefineStatus() {
   rb_define_method(cls_status, "inspect", (METHOD)status_inspect, 0);
   rb_define_method(cls_status, "==", (METHOD)status_op_eq, 1);
   rb_define_method(cls_status, "!=", (METHOD)status_op_ne, 1);
+}
+
+// Implementation of Future#del.
+static void future_del(void* ptr) {
+  delete (StructFuture*)ptr;
+}
+
+// Implementation of Future.new.
+static VALUE future_new(VALUE cls) {
+  StructFuture* sfuture = new StructFuture;
+  return Data_Wrap_Struct(cls_future, 0, future_del, sfuture);
+}
+
+// Implementation of Future#initialize.
+static VALUE future_initialize(int argc, VALUE* argv, VALUE vself) {
+  rb_raise(rb_eRuntimeError, "Future cannot be created itself");
+  return Qnil;
+}
+
+// Implementation of Future#wait.
+static VALUE future_wait(int argc, VALUE* argv, VALUE vself) {
+  StructFuture* sfuture = nullptr;
+  Data_Get_Struct(vself, StructFuture, sfuture);
+  if (sfuture->future == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  volatile VALUE vtimeout;
+  rb_scan_args(argc, argv, "01", &vtimeout);
+  const double timeout = vtimeout == Qnil ? -1.0 : GetFloat(vtimeout);
+  bool ok = false;
+  NativeFunction(sfuture->concurrent, [&]() {
+      ok = sfuture->future->Wait(timeout);
+    });
+  if (ok) {
+    sfuture->concurrent = false;
+    return Qtrue;
+  }
+  return Qfalse;
+}
+
+// Implementation of Future#get.
+static VALUE future_get(VALUE vself) {
+  StructFuture* sfuture = nullptr;
+  Data_Get_Struct(vself, StructFuture, sfuture);
+  if (sfuture->future == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  const auto& type = sfuture->future->GetExtraType();
+  if (type == typeid(tkrzw::Status)) {
+    tkrzw::Status status(tkrzw::Status::SUCCESS);
+    NativeFunction(sfuture->concurrent, [&]() {
+        status = sfuture->future->Get();
+      });
+    return MakeStatusValue(std::move(status));
+  }
+  if (type == typeid(std::pair<tkrzw::Status, std::string>)) {
+    std::pair<tkrzw::Status, std::string> result;
+    NativeFunction(sfuture->concurrent, [&]() {
+        result = sfuture->future->GetString();
+      });
+    volatile VALUE vpair = rb_ary_new2(2);
+    rb_ary_push(vpair, MakeStatusValue(std::move(result.first)));
+    rb_ary_push(vpair, MakeString(result.second, sfuture->venc));
+    return vpair;
+  }
+  if (type == typeid(std::pair<tkrzw::Status, std::vector<std::string>>)) {
+    std::pair<tkrzw::Status, std::vector<std::string>> result;
+    NativeFunction(sfuture->concurrent, [&]() {
+        result = sfuture->future->GetStringVector();
+      });
+    volatile VALUE vlist = rb_ary_new2(result.second.size());
+    for (const auto& value : result.second) {
+      rb_ary_push(vlist, MakeString(value, sfuture->venc));
+    }
+    volatile VALUE vpair = rb_ary_new2(2);
+    rb_ary_push(vpair, MakeStatusValue(std::move(result.first)));
+    rb_ary_push(vpair, vlist);
+    return vpair;
+  }
+  if (type == typeid(std::pair<tkrzw::Status, std::map<std::string, std::string>>)) {
+    std::pair<tkrzw::Status, std::map<std::string, std::string>> result;
+    NativeFunction(sfuture->concurrent, [&]() {
+        result = sfuture->future->GetStringMap();
+      });
+    volatile VALUE vhash = rb_hash_new();
+    for (const auto& record : result.second) {
+      volatile VALUE vkey = MakeString(record.first, sfuture->venc);
+      volatile VALUE vvalue = MakeString(record.second, sfuture->venc);
+      rb_hash_aset(vhash, vkey, vvalue);
+    }
+    volatile VALUE vpair = rb_ary_new2(2);
+    rb_ary_push(vpair, MakeStatusValue(std::move(result.first)));
+    rb_ary_push(vpair, vhash);
+    return vpair;
+  }
+  if (type == typeid(std::pair<tkrzw::Status, int64_t>)) {
+    std::pair<tkrzw::Status, int64_t> result;
+    NativeFunction(sfuture->concurrent, [&]() {
+        result = sfuture->future->GetInteger();
+      });
+    volatile VALUE vpair = rb_ary_new2(2);
+    rb_ary_push(vpair, MakeStatusValue(std::move(result.first)));
+    rb_ary_push(vpair, LL2NUM(result.second));
+    return vpair;
+  }
+  rb_raise(rb_eRuntimeError, "unimplemented type");
+  return Qnil;
+}
+
+// Implementation of Future#to_s.
+static VALUE future_to_s(VALUE vself) {
+  StructFuture* sfuture = nullptr;
+  Data_Get_Struct(vself, StructFuture, sfuture);
+  if (sfuture->future == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  const std::string str = tkrzw::SPrintF("Future:%p", (void*)sfuture->future.get());
+  return rb_str_new(str.data(), str.size());
+}
+
+// Implementation of Future#inspect.
+static VALUE future_inspect(VALUE vself) {
+  StructFuture* sfuture = nullptr;
+  Data_Get_Struct(vself, StructFuture, sfuture);
+  if (sfuture->future == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  const std::string str = tkrzw::SPrintF("#<tkrzw::Future: %p>", (void*)sfuture->future.get());
+  return rb_str_new(str.data(), str.size());
+}
+
+// Creates a future object.
+static VALUE MakeFutureValue(tkrzw::StatusFuture&& future, bool concurrent, VALUE venc) {
+  StructFuture* sfuture = new StructFuture;
+  sfuture->future = std::make_unique<tkrzw::StatusFuture>(std::move(future));
+  sfuture->concurrent = false;
+  sfuture->venc = Qnil;
+  return Data_Wrap_Struct(cls_future, 0, future_del, sfuture);
+}
+
+// Defines the Future class.
+static void DefineFuture() {
+  cls_future = rb_define_class_under(mod_tkrzw, "Future", rb_cObject);
+  rb_define_alloc_func(cls_future, future_new);
+  rb_define_private_method(cls_future, "initialize", (METHOD)future_initialize, -1);
+  rb_define_method(cls_future, "wait", (METHOD)future_wait, -1);
+  rb_define_method(cls_future, "get", (METHOD)future_get, 0);
+  rb_define_method(cls_future, "to_s", (METHOD)future_to_s, 0);
+  rb_define_method(cls_future, "inspect", (METHOD)future_inspect, 0);
 }
 
 // Implementation of StatusException#initialize.
@@ -1159,14 +1352,14 @@ static VALUE dbm_export(VALUE vself, VALUE vdestdbm) {
   if (!rb_obj_is_instance_of(vdestdbm, cls_dbm)) {
     return MakeStatusValue(tkrzw::Status(tkrzw::Status::INVALID_ARGUMENT_ERROR));
   }
-  StructDBM* dest_sdbm = nullptr;
-  Data_Get_Struct(vdestdbm, StructDBM, dest_sdbm);
-  if (dest_sdbm->dbm == nullptr) {
+  StructDBM* sdest_dbm = nullptr;
+  Data_Get_Struct(vdestdbm, StructDBM, sdest_dbm);
+  if (sdest_dbm->dbm == nullptr) {
     rb_raise(rb_eRuntimeError, "not opened database");
   }
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(sdbm->concurrent, [&]() {
-      status = sdbm->dbm->Export(dest_sdbm->dbm.get());
+      status = sdbm->dbm->Export(sdest_dbm->dbm.get());
     });
   return MakeStatusValue(std::move(status));
 }
@@ -1853,6 +2046,431 @@ static void DefineIterator() {
   rb_define_method(cls_iter, "inspect", (METHOD)iter_inspect, 0);
 }
 
+// Implementation of AsyncDBM#del.
+static void asyncdbm_del(void* ptr) {
+  delete (StructAsyncDBM*)ptr;
+}
+
+// Implementation of AsyncDBM.new.
+static VALUE asyncdbm_new(VALUE cls) {
+  StructAsyncDBM* sasync = new StructAsyncDBM;
+  return Data_Wrap_Struct(cls_asyncdbm, 0, asyncdbm_del, sasync);
+}
+
+// Implementation of AsyncDBM#initialize.
+static VALUE asyncdbm_initialize(int argc, VALUE* argv, VALUE vself) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  volatile VALUE vdbm, vnum_threads;
+  rb_scan_args(argc, argv, "20", &vdbm, &vnum_threads);
+  StructDBM* sdbm = nullptr;
+  Data_Get_Struct(vdbm, StructDBM, sdbm);
+  if (sdbm->dbm == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened database");
+  }
+  const int32_t num_threads = GetInteger(vnum_threads);
+  sasync->async = std::make_unique<tkrzw::AsyncDBM>(sdbm->dbm.get(), num_threads);
+  return Qnil;
+}
+
+// Implementation of AsyncDBM#destruct.
+static VALUE asyncdbm_destruct(VALUE vself) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  sasync->async.reset(nullptr);
+  return Qnil;
+}
+
+// Implementation of AsyncDBM#to_s.
+static VALUE asyncdbm_to_s(VALUE vself) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  const std::string str = tkrzw::SPrintF("AsyncDBM:%p", (void*)sasync->async.get());
+  return rb_str_new(str.data(), str.size());
+}
+
+// Implementation of AsyncDBM#inspect.
+static VALUE asyncdbm_inspect(VALUE vself) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  const std::string str = tkrzw::SPrintF(
+      "#<tkrzw::AsyncDBM: %p>", (void*)sasync->async.get());
+  return rb_str_new(str.data(), str.size());
+}
+
+// Implementation of AsyncDBM#get.
+static VALUE asyncdbm_get(VALUE vself, VALUE vkey) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  vkey = StringValueEx(vkey);
+  const std::string_view key = GetStringView(vkey);
+  tkrzw::StatusFuture future(sasync->async->Get(key));
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
+// Implementation of AsyncDBM#get_multi.
+static VALUE asyncdbm_get_multi(VALUE vself, VALUE vkeys) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  if (TYPE(vkeys) != T_ARRAY) {
+    rb_raise(rb_eRuntimeError, "keys is not an array");
+  }
+  std::vector<std::string> keys;
+  const int32_t num_keys = RARRAY_LEN(vkeys);
+  for (int32_t i = 0; i < num_keys; i++) {
+    volatile VALUE vkey = rb_ary_entry(vkeys, i);
+    vkey = StringValueEx(vkey);
+    keys.emplace_back(std::string(RSTRING_PTR(vkey), RSTRING_LEN(vkey)));
+  }
+  std::vector<std::string_view> key_views(keys.begin(), keys.end());
+  tkrzw::StatusFuture future(sasync->async->GetMulti(key_views));
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
+// Implementation of AsyncDBM#set.
+static VALUE asyncdbm_set(int argc, VALUE* argv, VALUE vself) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  volatile VALUE vkey, vvalue, voverwrite;
+  rb_scan_args(argc, argv, "21", &vkey, &vvalue, &voverwrite);
+  vkey = StringValueEx(vkey);
+  const std::string_view key = GetStringView(vkey);
+  vvalue = StringValueEx(vvalue);
+  const std::string_view value = GetStringView(vvalue);
+  const bool overwrite = argc > 2 ? RTEST(voverwrite) : true;
+  tkrzw::StatusFuture future(sasync->async->Set(key, value, overwrite));
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
+// Implementation of AsyncDBM#set_multi.
+static VALUE asyncdbm_set_multi(int argc, VALUE* argv, VALUE vself) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  volatile VALUE voverwrite, vrecords;
+  rb_scan_args(argc, argv, "02", &voverwrite, &vrecords);
+  bool overwrite = true;
+  if (argc <= 1 && TYPE(voverwrite) == T_HASH) {
+    vrecords = voverwrite;
+  } else {
+    overwrite = argc > 0 ? RTEST(voverwrite) : true;
+  }
+  const auto& records = HashToMap(vrecords);
+  std::map<std::string_view, std::string_view> record_views;
+  for (const auto& record : records) {
+    record_views.emplace(std::make_pair(
+        std::string_view(record.first), std::string_view(record.second)));
+  }
+  tkrzw::StatusFuture future(sasync->async->SetMulti(record_views, overwrite));
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
+// Implementation of AsyncDBM#remove.
+static VALUE asyncdbm_remove(VALUE vself, VALUE vkey) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  vkey = StringValueEx(vkey);
+  const std::string_view key = GetStringView(vkey);
+  tkrzw::StatusFuture future(sasync->async->Remove(key));
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
+// Implementation of AsyncDBM#remove_multi.
+static VALUE asyncdbm_remove_multi(VALUE vself, VALUE vkeys) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  if (TYPE(vkeys) != T_ARRAY) {
+    rb_raise(rb_eRuntimeError, "keys is not an array");
+  }
+  std::vector<std::string> keys;
+  const int32_t num_keys = RARRAY_LEN(vkeys);
+  for (int32_t i = 0; i < num_keys; i++) {
+    volatile VALUE vkey = rb_ary_entry(vkeys, i);
+    vkey = StringValueEx(vkey);
+    keys.emplace_back(std::string(RSTRING_PTR(vkey), RSTRING_LEN(vkey)));
+  }
+  std::vector<std::string_view> key_views(keys.begin(), keys.end());
+  tkrzw::StatusFuture future(sasync->async->RemoveMulti(key_views));
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
+// Implementation of AsyncDBM#append.
+static VALUE asyncdbm_append(int argc, VALUE* argv, VALUE vself) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  volatile VALUE vkey, vvalue, vdelim;
+  rb_scan_args(argc, argv, "21", &vkey, &vvalue, &vdelim);
+  vkey = StringValueEx(vkey);
+  const std::string_view key = GetStringView(vkey);
+  vvalue = StringValueEx(vvalue);
+  const std::string_view value = GetStringView(vvalue);
+  vdelim = StringValueEx(vdelim);
+  const std::string_view delim = GetStringView(vdelim);
+  tkrzw::StatusFuture future(sasync->async->Append(key, value, delim));
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
+// Implementation of AsyncDBM#append_multi.
+static VALUE asyncdbm_append_multi(int argc, VALUE* argv, VALUE vself) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  volatile VALUE vdelim, vrecords;
+  rb_scan_args(argc, argv, "02", &vdelim, &vrecords);
+  std::string_view delim = "";
+  if (argc <= 1 && TYPE(vdelim) == T_HASH) {
+    vrecords = vdelim;
+  } else {
+    delim = argc > 0 ? GetStringView(vdelim) : std::string_view("");
+  }
+  const auto& records = HashToMap(vrecords);
+  std::map<std::string_view, std::string_view> record_views;
+  for (const auto& record : records) {
+    record_views.emplace(std::make_pair(
+        std::string_view(record.first), std::string_view(record.second)));
+  }
+  tkrzw::StatusFuture future(sasync->async->AppendMulti(record_views, delim));
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
+// Implementation of AsyncDBM#compare_exchange.
+static VALUE asyncdbm_compare_exchange(VALUE vself, VALUE vkey, VALUE vexpected, VALUE vdesired) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  vkey = StringValueEx(vkey);
+  const std::string_view key = GetStringView(vkey);
+  std::string_view expected;
+  if (vexpected != Qnil) {
+    vexpected = StringValueEx(vexpected);
+    expected = GetStringView(vexpected);
+  }
+  std::string_view desired;
+  if (vdesired != Qnil) {
+    vdesired = StringValueEx(vdesired);
+    desired = GetStringView(vdesired);
+  }
+  tkrzw::StatusFuture future(sasync->async->CompareExchange(key, expected, desired));
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
+// Implementation of AsyncDBM#increment.
+static VALUE asyncdbm_increment(int argc, VALUE* argv, VALUE vself) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  volatile VALUE vkey, vinc, vinit, vstatus;
+  rb_scan_args(argc, argv, "13", &vkey, &vinc, &vinit, &vstatus);
+  vkey = StringValueEx(vkey);
+  const std::string_view key = GetStringView(vkey);
+  const int64_t inc = vinc == Qnil ? 1 : GetInteger(vinc);
+  const int64_t init = vinit == Qnil ? 0 : GetInteger(vinit);
+  tkrzw::StatusFuture future(sasync->async->Increment(key, inc, init));
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
+// Implementation of AsyncDBM#compare_exchange_multi.
+static VALUE asyncdbm_compare_exchange_multi(VALUE vself, VALUE vexpected, VALUE vdesired) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  if (TYPE(vexpected) != T_ARRAY || TYPE(vdesired) != T_ARRAY) {
+    rb_raise(rb_eRuntimeError, "expected or desired is not an array");
+  }
+  const auto& expected = ExtractSVPairs(vexpected);
+  const auto& desired = ExtractSVPairs(vdesired);
+  tkrzw::StatusFuture future(sasync->async->CompareExchangeMulti(expected, desired));
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
+// Implementation of AsyncDBM#clear.
+static VALUE asyncdbm_clear(VALUE vself) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  tkrzw::StatusFuture future(sasync->async->Clear());
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
+// Implementation of AsyncDBM#rebuild.
+static VALUE asyncdbm_rebuild(int argc, VALUE* argv, VALUE vself) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  volatile VALUE vparams;
+  rb_scan_args(argc, argv, "01", &vparams);
+  const std::map<std::string, std::string> params = HashToMap(vparams);
+  tkrzw::StatusFuture future(sasync->async->Rebuild(params));
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
+// Implementation of AsyncDBM#synchronize.
+static VALUE asyncdbm_synchronize(int argc, VALUE* argv, VALUE vself) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  volatile VALUE vhard, vparams;
+  rb_scan_args(argc, argv, "11", &vhard, &vparams);
+  const bool hard = RTEST(vhard);
+  const std::map<std::string, std::string> params = HashToMap(vparams);
+  tkrzw::StatusFuture future(sasync->async->Synchronize(hard, nullptr, params));
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
+// Implementation of AsyncDBM#copy_file_data.
+static VALUE asyncdbm_copy_file_data(VALUE vself, VALUE vdestpath) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  vdestpath = StringValueEx(vdestpath);
+  const std::string_view dest_path = GetStringView(vdestpath);
+  tkrzw::StatusFuture future(sasync->async->CopyFileData(std::string(dest_path)));
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
+// Implementation of AsyncDBM#export.
+static VALUE asyncdbm_export(VALUE vself, VALUE vdestdbm) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  if (!rb_obj_is_instance_of(vdestdbm, cls_dbm)) {
+    return MakeStatusValue(tkrzw::Status(tkrzw::Status::INVALID_ARGUMENT_ERROR));
+  }
+  StructDBM* sdest_dbm = nullptr;
+  Data_Get_Struct(vdestdbm, StructDBM, sdest_dbm);
+  if (sdest_dbm->dbm == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened database");
+  }
+  tkrzw::StatusFuture future(sasync->async->Export(sdest_dbm->dbm.get()));
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
+// Implementation of AsyncDBM#export_to_flat_records.
+static VALUE asyncdbm_export_to_flat_records(VALUE vself, VALUE vdest_file) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  StructFile* sdest_file = nullptr;
+  Data_Get_Struct(vdest_file, StructFile, sdest_file);
+  if (sdest_file->file == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened file");
+  }
+  tkrzw::StatusFuture future(sasync->async->ExportToFlatRecords(sdest_file->file.get()));
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
+// Implementation of AsyncDBM#import_from_flat_records.
+static VALUE asyncdbm_import_from_flat_records(VALUE vself, VALUE vsrc_file) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  StructFile* ssrc_file = nullptr;
+  Data_Get_Struct(vsrc_file, StructFile, ssrc_file);
+  if (ssrc_file->file == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened file");
+  }
+  tkrzw::StatusFuture future(sasync->async->ImportFromFlatRecords(ssrc_file->file.get()));
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
+// Implementation of AsyncDBM#search.
+static VALUE asyncdbm_search(int argc, VALUE* argv, VALUE vself) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  volatile VALUE vmode, vpattern, vcapacity;
+  rb_scan_args(argc, argv, "21", &vmode, &vpattern, &vcapacity);
+  vmode = StringValueEx(vmode);
+  const std::string_view mode = GetStringView(vmode);
+  vpattern = StringValueEx(vpattern);
+  const std::string_view pattern = GetStringView(vpattern);
+  const int64_t capacity = GetInteger(vcapacity);
+  tkrzw::StatusFuture future(sasync->async->SearchModal(mode, pattern, capacity));
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
+// Defines the AsyncDBM class.
+static void DefineAsyncDBM() {
+  cls_asyncdbm = rb_define_class_under(mod_tkrzw, "AsyncDBM", rb_cObject);
+  rb_define_alloc_func(cls_asyncdbm, asyncdbm_new);
+  rb_define_private_method(cls_asyncdbm, "initialize", (METHOD)asyncdbm_initialize, -1);
+  rb_define_method(cls_asyncdbm, "destruct", (METHOD)asyncdbm_destruct, 0);
+  rb_define_method(cls_asyncdbm, "get", (METHOD)asyncdbm_get, 1);
+  rb_define_method(cls_asyncdbm, "get_multi", (METHOD)asyncdbm_get_multi, -2);
+  rb_define_method(cls_asyncdbm, "set", (METHOD)asyncdbm_set, -1);
+  rb_define_method(cls_asyncdbm, "set_multi", (METHOD)asyncdbm_set_multi, -1);
+  rb_define_method(cls_asyncdbm, "remove", (METHOD)asyncdbm_remove, 1);
+  rb_define_method(cls_asyncdbm, "remove_multi", (METHOD)asyncdbm_remove_multi, -2);
+  rb_define_method(cls_asyncdbm, "append", (METHOD)asyncdbm_append, -1);
+  rb_define_method(cls_asyncdbm, "append_multi", (METHOD)asyncdbm_append_multi, -1);
+  rb_define_method(cls_asyncdbm, "compare_exchange", (METHOD)asyncdbm_compare_exchange, 3);
+  rb_define_method(cls_asyncdbm, "increment", (METHOD)asyncdbm_increment, -1);
+  rb_define_method(cls_asyncdbm, "compare_exchange_multi",
+                   (METHOD)asyncdbm_compare_exchange_multi, 2);
+  rb_define_method(cls_asyncdbm, "clear", (METHOD)asyncdbm_clear, 0);
+  rb_define_method(cls_asyncdbm, "rebuild", (METHOD)asyncdbm_rebuild, -1);
+  rb_define_method(cls_asyncdbm, "synchronize", (METHOD)asyncdbm_synchronize, -1);
+  rb_define_method(cls_asyncdbm, "copy_file_data", (METHOD)asyncdbm_copy_file_data, 1);
+  rb_define_method(cls_asyncdbm, "export", (METHOD)asyncdbm_export, 1);
+  rb_define_method(cls_asyncdbm, "export_to_flat_records",
+                   (METHOD)asyncdbm_export_to_flat_records, 1);
+  rb_define_method(cls_asyncdbm, "import_from_flat_records",
+                   (METHOD)asyncdbm_import_from_flat_records, 1);
+  rb_define_method(cls_asyncdbm, "search", (METHOD)asyncdbm_search, -1);
+  rb_define_method(cls_asyncdbm, "to_s", (METHOD)asyncdbm_to_s, 0);
+  rb_define_method(cls_asyncdbm, "inspect", (METHOD)asyncdbm_inspect, 0);
+}
+
 // Implementation of File#del.
 static void file_del(void* ptr) {
   delete (StructFile*)ptr;
@@ -2185,9 +2803,11 @@ void Init_tkrzw() {
   DefineModule();
   DefineUtility();
   DefineStatus();
+  DefineFuture();
   DefineStatusException();
   DefineDBM();
   DefineIterator();
+  DefineAsyncDBM();
   DefineFile();
 }
 

@@ -599,6 +599,108 @@ class TkrzwTest < Test::Unit::TestCase
     file.destruct
   end
 
+  # AsyncDBM tests.
+  def test_asyncdbm
+    dbm = DBM.new
+    path = _make_tmp_path("casket.tkh")
+    copy_path = _make_tmp_path("casket-copy.tkh")
+    assert_equal(Status::SUCCESS, dbm.open(path, true, num_buckets: 100, concurrent: true))
+    async = AsyncDBM.new(dbm, 4)
+    assert_true(async.inspect.index("AsyncDBM") != nil)
+    assert_true(async.to_s.index("AsyncDBM") != nil)
+    set_future = async.set("one", "hop")
+    assert_true(set_future.inspect.index("Future") != nil)
+    assert_true(set_future.to_s.index("Future") != nil)
+    assert_true(set_future.wait)
+    assert_equal(Status::SUCCESS, set_future.get)
+    assert_equal(Status::DUPLICATION_ERROR, async.set("one", "more", false).get)
+    assert_equal(Status::SUCCESS, async.set("two", "step", false).get)
+    assert_equal(Status::SUCCESS, async.set("three", "jump", false).get)
+    assert_equal(Status::SUCCESS, async.append("three", "go", ":").get)
+    get_result = async.get("one").get
+    assert_equal(Status::SUCCESS, get_result[0])
+    assert_equal("hop", get_result[1])
+    assert_equal("step", async.get("two").get[1])
+    assert_equal("jump:go", async.get("three").get[1])
+    assert_equal(Status::SUCCESS, async.get("three").get[0])
+    assert_equal(Status::SUCCESS, async.remove("one").get)
+    assert_equal(Status::NOT_FOUND_ERROR, async.remove("one").get)
+    assert_equal(Status::SUCCESS, async.remove("two").get)
+    assert_equal(Status::SUCCESS, async.remove("three").get)
+    assert_equal(0, dbm.count)
+    set_future = async.set_multi(false, one: "hop", two: "step", three: "jump")
+    assert_equal(Status::SUCCESS, set_future.get)
+    assert_equal(Status::SUCCESS, async.append_multi(":", three: "go").get)
+    get_result = async.get_multi("one", "two").get
+    assert_equal(Status::SUCCESS, get_result[0])
+    assert_equal("hop", get_result[1]["one"])
+    assert_equal("step", get_result[1]["two"])
+    get_result = async.get_multi("one", "two", "three", "hoge").get
+    assert_equal(Status::NOT_FOUND_ERROR, get_result[0])
+    assert_equal("hop", get_result[1]["one"])
+    assert_equal("step", get_result[1]["two"])
+    assert_equal("jump:go", get_result[1]["three"])
+    assert_equal(Status::SUCCESS, async.remove_multi("one", "two", "three").get)
+    assert_equal(0, dbm.count)
+    incr_result = async.increment("num", 5, 100).get
+    assert_equal(Status::SUCCESS, incr_result[0])
+    assert_equal(105, incr_result[1])
+    assert_equal(110, async.increment("num", 5, 100).get[1])
+    assert_equal(Status::SUCCESS, async.remove("num").get)
+    assert_equal(Status::SUCCESS, async.compare_exchange("one", nil, "ichi").get)
+    assert_equal("ichi", async.get("one").get[1])
+    assert_equal(Status::SUCCESS, async.compare_exchange("one", "ichi", "ni").get)
+    assert_equal("ni", async.get("one").get[1])
+    assert_equal(Status::SUCCESS, async.compare_exchange_multi(
+                   [["one", "ni"], ["two", nil]], [["one", "san"], ["two", "uno"]]).get)
+    assert_equal("san", async.get("one").get[1])
+    assert_equal("uno", async.get("two").get[1])
+    assert_equal(Status::SUCCESS, async.compare_exchange_multi(
+                   [["one", "san"], ["two", "uno"]], [["one", nil], ["two", nil]]).get)
+    assert_equal(0, dbm.count)
+    assert_equal(Status::SUCCESS, async.set("hello", "world", false).get)
+    assert_equal(Status::SUCCESS, async.synchronize(false).get)
+    assert_equal(Status::SUCCESS, async.rebuild.get)
+    assert_equal(1, dbm.count)
+    assert_equal(Status::SUCCESS, async.copy_file_data(copy_path).get)
+    copy_dbm = DBM.new
+    assert_equal(Status::SUCCESS, copy_dbm.open(copy_path, true))
+    assert_equal(1, copy_dbm.count)
+    assert_equal(Status::SUCCESS, copy_dbm.clear)
+    assert_equal(0, copy_dbm.count)
+    assert_equal(Status::SUCCESS, async.export(copy_dbm).get)
+    assert_equal(1, copy_dbm.count)
+    assert_equal(Status::SUCCESS, copy_dbm.close)
+    File.delete(copy_path)
+    copy_file = Tkrzw::File.new
+    assert_equal(Status::SUCCESS, copy_file.open(copy_path, true))
+    assert_equal(Status::SUCCESS, async.export_to_flat_records(copy_file).get)
+    assert_equal(Status::SUCCESS, async.clear.get)
+    assert_equal(0, dbm.count)
+    assert_equal(Status::SUCCESS, async.import_from_flat_records(copy_file).get)
+    assert_equal(1, dbm.count)
+    assert_equal(Status::SUCCESS, copy_file.close)
+    fiber = Fiber.new do
+      futures = []
+      futures.append(async.set("hello", "good-bye", true))
+      futures.append(async.set("hi", "bye", true))
+      futures.append(async.set("chao", "adios", true))
+      futures.each do |future|
+        Fiber.yield(future.get())
+      end
+    end
+    assert_equal(Status::SUCCESS, fiber.resume)
+    assert_equal(Status::SUCCESS, fiber.resume)
+    assert_equal(Status::SUCCESS, fiber.resume)
+    search_result = async.search("begin", "h").get
+    assert_equal(Status::SUCCESS, search_result[0])
+    assert_equal(2, search_result[1].length)
+    assert_true(search_result[1].include?("hello"))
+    assert_true(search_result[1].include?("hi"))
+    async.destruct
+    assert_equal(Status::SUCCESS, dbm.close)
+  end
+
   # File tests.
   def test_file
     file = Tkrzw::File.new

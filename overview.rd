@@ -137,3 +137,41 @@ The following code is a more complex example.  You should use "ensure" clauses t
     # Releases the resources.
     dbm.destruct
   end
+
+The following code is a typical example of the asynchronous API.  The AsyncDBM class manages a thread pool and handles database operations in the background in parallel.  Each Method of AsyncDBM returns a Future object to monitor the result.
+
+  require 'tkrzw'
+  
+  dbm = Tkrzw::DBM.new
+  dbm.open("casket.tkh", true, truncate: true, num_buckets: 100)
+  
+  # Prepares the asynchronous adapter with 4 worker threads.
+  async = Tkrzw::AsyncDBM.new(dbm, 4)
+  
+  # Execute the Set method asynchronously.
+  future = async.set("hello", "world")
+  # Does something in the foreground.
+  until future.wait(0)
+    puts("Setting a record")
+  end
+  # Checks the result after awaiting the Set operation.
+  status = future.get
+  if status != Tkrzw::Status::SUCCESS
+    puts("ERROR: " + status.to_s)
+  end
+  
+  # Execute the Get method asynchronously.
+  future = async.get("hello")
+  # Does something in the foreground.
+  puts("Getting a record")
+  # Awaits the operation and get the result.
+  status, value = future.get()
+  if status == Tkrzw::Status::SUCCESS
+    puts("VALUE: " + value)
+  end
+  
+  # Release the asynchronous adapter.
+  async.destruct
+  
+  # Closes the database.
+  dbm.close

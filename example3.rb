@@ -37,7 +37,7 @@ end
 future = async.get("hello")
 # Does something in the foreground.
 puts("Getting a record")
-# Awaits the operation while yielding the coroutine ownership.
+# Awaits the operation and get the result.
 status, value = future.get()
 if status == Tkrzw::Status::SUCCESS
   puts("VALUE: " + value)
