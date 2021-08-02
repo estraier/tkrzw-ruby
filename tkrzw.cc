@@ -572,6 +572,14 @@ static VALUE future_initialize(int argc, VALUE* argv, VALUE vself) {
   return Qnil;
 }
 
+// Implementation of Future#destruct.
+static VALUE future_destruct(VALUE vself) {
+  StructFuture* sfuture = nullptr;
+  Data_Get_Struct(vself, StructFuture, sfuture);
+  sfuture->future.reset(nullptr);
+  return Qnil;
+}
+
 // Implementation of Future#wait.
 static VALUE future_wait(int argc, VALUE* argv, VALUE vself) {
   StructFuture* sfuture = nullptr;
@@ -698,6 +706,7 @@ static void DefineFuture() {
   cls_future = rb_define_class_under(mod_tkrzw, "Future", rb_cObject);
   rb_define_alloc_func(cls_future, future_new);
   rb_define_private_method(cls_future, "initialize", (METHOD)future_initialize, -1);
+  rb_define_method(cls_future, "destruct", (METHOD)future_destruct, 0);
   rb_define_method(cls_future, "wait", (METHOD)future_wait, -1);
   rb_define_method(cls_future, "get", (METHOD)future_get, 0);
   rb_define_method(cls_future, "to_s", (METHOD)future_to_s, 0);

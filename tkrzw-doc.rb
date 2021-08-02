@@ -186,6 +186,11 @@ module Tkrzw
       # (native code)
     end
 
+    # Releases the resource explicitly.
+    def destruct()
+      # (native code)
+    end
+
     # Waits for the operation to be done.
     # @param timeout The waiting time in seconds.  If it is negative, no timeout is set.
     # @return True if the operation has done.  False if timeout occurs.

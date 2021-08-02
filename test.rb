@@ -613,6 +613,7 @@ class TkrzwTest < Test::Unit::TestCase
     assert_true(set_future.to_s.index("Future") != nil)
     assert_true(set_future.wait)
     assert_equal(Status::SUCCESS, set_future.get)
+    set_future.destruct
     assert_equal(Status::DUPLICATION_ERROR, async.set("one", "more", false).get)
     assert_equal(Status::SUCCESS, async.set("two", "step", false).get)
     assert_equal(Status::SUCCESS, async.set("three", "jump", false).get)
