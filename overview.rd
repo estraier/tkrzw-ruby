@@ -148,7 +148,7 @@ The following code is a typical example of the asynchronous API.  The AsyncDBM c
   # Prepares the asynchronous adapter with 4 worker threads.
   async = Tkrzw::AsyncDBM.new(dbm, 4)
   
-  # Execute the Set method asynchronously.
+  # Executes the Set method asynchronously.
   future = async.set("hello", "world")
   # Does something in the foreground.
   until future.wait(0)
@@ -160,7 +160,7 @@ The following code is a typical example of the asynchronous API.  The AsyncDBM c
     puts("ERROR: " + status.to_s)
   end
   
-  # Execute the Get method asynchronously.
+  # Executes the Get method asynchronously.
   future = async.get("hello")
   # Does something in the foreground.
   puts("Getting a record")
@@ -170,7 +170,7 @@ The following code is a typical example of the asynchronous API.  The AsyncDBM c
     puts("VALUE: " + value)
   end
   
-  # Release the asynchronous adapter.
+  # Releases the asynchronous adapter.
   async.destruct
   
   # Closes the database.

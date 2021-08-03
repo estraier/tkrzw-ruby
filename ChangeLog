@@ -4,6 +4,7 @@
 
 	- Add Destruct method to Future.
 	- Fix a bug of memory leaking.
+	- Future#get releases the resource.
 
 2021-07-29  Mikio Hirabayashi  <hirarin@gmail.com>
 

@@ -21,7 +21,7 @@ dbm.open("casket.tkh", true, truncate: true, num_buckets: 100)
 # Prepares the asynchronous adapter with 4 worker threads.
 async = Tkrzw::AsyncDBM.new(dbm, 4)
 
-# Execute the Set method asynchronously.
+# Executes the Set method asynchronously.
 future = async.set("hello", "world")
 # Does something in the foreground.
 until future.wait(0)
@@ -33,7 +33,7 @@ if status != Tkrzw::Status::SUCCESS
   puts("ERROR: " + status.to_s)
 end
 
-# Execute the Get method asynchronously.
+# Executes the Get method asynchronously.
 future = async.get("hello")
 # Does something in the foreground.
 puts("Getting a record")
@@ -43,7 +43,7 @@ if status == Tkrzw::Status::SUCCESS
   puts("VALUE: " + value)
 end
 
-# Release the asynchronous adapter.
+# Releases the asynchronous adapter.
 async.destruct
 
 # Closes the database.
