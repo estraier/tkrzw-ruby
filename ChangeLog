@@ -3,6 +3,7 @@
 	- Release: 0.1.19
 
 	- Add Destruct method to Future.
+	- Fix a bug of memory leaking.
 
 2021-07-29  Mikio Hirabayashi  <hirarin@gmail.com>
 

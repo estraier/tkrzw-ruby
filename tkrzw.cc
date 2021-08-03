@@ -557,7 +557,9 @@ static void DefineStatus() {
 
 // Implementation of Future#del.
 static void future_del(void* ptr) {
-  delete (StructFuture*)ptr;
+  StructFuture* sfuture = (StructFuture*)ptr;
+  sfuture->future.reset(nullptr);
+  delete sfuture;
 }
 
 // Implementation of Future.new.
@@ -614,6 +616,7 @@ static VALUE future_get(VALUE vself) {
     NativeFunction(sfuture->concurrent, [&]() {
         status = sfuture->future->Get();
       });
+    sfuture->future.reset(nullptr);
     return MakeStatusValue(std::move(status));
   }
   if (type == typeid(std::pair<tkrzw::Status, std::string>)) {
@@ -621,6 +624,7 @@ static VALUE future_get(VALUE vself) {
     NativeFunction(sfuture->concurrent, [&]() {
         result = sfuture->future->GetString();
       });
+    sfuture->future.reset(nullptr);
     volatile VALUE vpair = rb_ary_new2(2);
     rb_ary_push(vpair, MakeStatusValue(std::move(result.first)));
     rb_ary_push(vpair, MakeString(result.second, sfuture->venc));
@@ -631,6 +635,7 @@ static VALUE future_get(VALUE vself) {
     NativeFunction(sfuture->concurrent, [&]() {
         result = sfuture->future->GetStringVector();
       });
+    sfuture->future.reset(nullptr);
     volatile VALUE vlist = rb_ary_new2(result.second.size());
     for (const auto& value : result.second) {
       rb_ary_push(vlist, MakeString(value, sfuture->venc));
@@ -645,6 +650,7 @@ static VALUE future_get(VALUE vself) {
     NativeFunction(sfuture->concurrent, [&]() {
         result = sfuture->future->GetStringMap();
       });
+    sfuture->future.reset(nullptr);
     volatile VALUE vhash = rb_hash_new();
     for (const auto& record : result.second) {
       volatile VALUE vkey = MakeString(record.first, sfuture->venc);
@@ -661,6 +667,7 @@ static VALUE future_get(VALUE vself) {
     NativeFunction(sfuture->concurrent, [&]() {
         result = sfuture->future->GetInteger();
       });
+    sfuture->future.reset(nullptr);
     volatile VALUE vpair = rb_ary_new2(2);
     rb_ary_push(vpair, MakeStatusValue(std::move(result.first)));
     rb_ary_push(vpair, LL2NUM(result.second));
@@ -760,7 +767,9 @@ static void DefineStatusException() {
 
 // Implementation of DBM#del.
 static void dbm_del(void* ptr) {
-  delete (StructDBM*)ptr;
+  StructDBM* sdbm = (StructDBM*)ptr;
+  sdbm->dbm.reset(nullptr);
+  delete sdbm;
 }
 
 // Implementation of DBM.new.
@@ -1744,7 +1753,9 @@ static void DefineDBM() {
 
 // Implementation of Iterator#del.
 static void iter_del(void* ptr) {
-  delete (StructIter*)ptr;
+  StructIter* siter = (StructIter*)ptr;
+  siter->iter.reset(nullptr);
+  delete siter;
 }
 
 // Implementation of Iterator.new.
@@ -1775,9 +1786,6 @@ static VALUE iter_initialize(VALUE vself, VALUE vdbm) {
 static VALUE iter_destruct(VALUE vself) {
   StructIter* siter = nullptr;
   Data_Get_Struct(vself, StructIter, siter);
-  if (siter->iter == nullptr) {
-    rb_raise(rb_eRuntimeError, "destructed Iterator");
-  }
   siter->iter.reset(nullptr);
   return Qnil;
 }
@@ -2057,7 +2065,9 @@ static void DefineIterator() {
 
 // Implementation of AsyncDBM#del.
 static void asyncdbm_del(void* ptr) {
-  delete (StructAsyncDBM*)ptr;
+  StructAsyncDBM* sasync = (StructAsyncDBM*)ptr;
+  sasync->async.reset(nullptr);
+  delete sasync;
 }
 
 // Implementation of AsyncDBM.new.
@@ -2482,7 +2492,9 @@ static void DefineAsyncDBM() {
 
 // Implementation of File#del.
 static void file_del(void* ptr) {
-  delete (StructFile*)ptr;
+  StructFile* sfile = (StructFile*)ptr;
+  sfile->file.reset(nullptr);
+  delete sfile;
 }
 
 // Implementation of File.new.
@@ -2500,9 +2512,6 @@ static VALUE file_initialize(VALUE vself) {
 static VALUE file_destruct(VALUE vself) {
   StructFile* sfile = nullptr;
   Data_Get_Struct(vself, StructFile, sfile);
-  if (sfile->file == nullptr) {
-    rb_raise(rb_eRuntimeError, "destructed File");
-  }
   sfile->file.reset(nullptr);
   return Qnil;
 }

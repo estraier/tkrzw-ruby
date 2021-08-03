@@ -173,6 +173,7 @@ module Tkrzw
   end
 
   # Future containing a status object and extra data.
+  # Future objects are made by methods of AsyncDBM.  Every future object should be destroyed by the "destruct" method or the "get" method to free resources.
   class Future
     # Returns a string representation of the content.
     # @return The string representation of the content.
@@ -200,7 +201,7 @@ module Tkrzw
 
     # Waits for the operation to be done and gets the result status.
     # @return The result status and extra data if any.  The existence and the type of extra data depends on the operation which makes the future.  For DBM#get, a tuple of the status and the retrieved value is returned.  For DBM#set and DBM#remove, the status object itself is returned.
-    # This can be called only once for a future object.
+    # The internal resource is released by this method.  "wait" and "get" cannot be called after calling this method.
     def get()
       # (native code)
     end
