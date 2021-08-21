@@ -539,6 +539,8 @@ static void DefineStatus() {
                   INT2FIX(tkrzw::Status::DUPLICATION_ERROR));
   rb_define_const(cls_status, "BROKEN_DATA_ERROR",
                   INT2FIX(tkrzw::Status::BROKEN_DATA_ERROR));
+  rb_define_const(cls_status, "NETWORK_ERROR",
+                  INT2FIX(tkrzw::Status::NETWORK_ERROR));
   rb_define_const(cls_status, "APPLICATION_ERROR",
                   INT2FIX(tkrzw::Status::APPLICATION_ERROR));
   rb_define_private_method(cls_status, "initialize", (METHOD)status_initialize, -1);

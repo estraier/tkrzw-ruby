@@ -92,8 +92,10 @@ module Tkrzw
     DUPLICATION_ERROR = 10
     # Error that internal data are broken.
     BROKEN_DATA_ERROR = 11
+    # Error caused by networking failure.
+    NETWORK_ERROR = 12
     # Generic error caused by the application logic.
-    APPLICATION_ERROR = 12
+    APPLICATION_ERROR = 13
 
     # Sets the code and the message.
     # @param code The status code.  This can be omitted and then SUCCESS is set.
