@@ -452,7 +452,10 @@ module Tkrzw
     # Rebuilds the entire database.
     # @param params Optional parameters of a hash object.
     # @return The result status.
-    # The optional parameters are the same as the "open" method.  Omitted tuning parameters are kept the same or implicitly optimized.
+    # The optional parameters are the same as the "open" method.  Omitted tuning parameters are kept the same or implicitly optimized.<br>
+    # In addition, HashDBM, TreeDBM, and SkipDBM supports the following parameters.
+    # - skip_broken_records (bool): If true, the operation continues even if there are broken records which can be skipped.
+    # - sync_hard (bool): If true, physical synchronization with the hardware is done before finishing the rebuilt file.
     def rebuild(params={})
       # (native code)
     end
@@ -846,7 +849,7 @@ module Tkrzw
     # Rebuilds the entire database.
     # @param params Optional parameters of a hash object.
     # @return The future for the result status.
-    # The optional parameters are the same as the "open" method.  Omitted tuning parameters are kept the same or implicitly optimized.
+    # The parameters work in the same way as with DBM#rebuild.
     def rebuild(params={})
       # (native code)
     end
@@ -855,7 +858,7 @@ module Tkrzw
     # @param hard True to do physical synchronization with the hardware or false to do only logical synchronization with the file system.
     # @param params Optional parameters of a hash object.
     # @return The future for the result status.
-    # Only SkipDBM uses the optional parameters.  The "merge" parameter specifies paths of databases to merge, separated by colon.  The "reducer" parameter specifies the reducer to apply to records of the same key.  "ReduceToFirst", "ReduceToSecond", "ReduceToLast", etc are supported.
+    # The parameters work in the same way as with DBM#synchronize.
     def synchronize(hard, params={})
       # (native code)
     end
