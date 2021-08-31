@@ -283,6 +283,7 @@ module Tkrzw
     # - fbp_capacity (int): The capacity of the free block pool.
     # - min_read_size (int): The minimum reading size to read a record.
     # - lock_mem_buckets (bool): True to lock the memory for the hash buckets.
+    # - cache_buckets (bool): True to cache the hash buckets on memory.
     # For TreeDBM, all optional parameters for HashDBM are available.  In addition, these optional parameters are supported.
     # - max_page_size (int): The maximum size of a page.
     # - max_branches (int): The maximum number of branches each inner node can have.
