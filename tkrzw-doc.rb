@@ -478,8 +478,9 @@ module Tkrzw
 
     # Copies the content of the database file to another file.
     # @param dest_path A path to the destination file.
+    # @param sync_hard True to do physical synchronization with the hardware.
     # @return The result status.
-    def copy_file_data(dest_path)
+    def copy_file_data(dest_path, sync_hard=false)
       # (native code)
     end
   
@@ -866,8 +867,9 @@ module Tkrzw
 
     # Copies the content of the database file to another file.
     # @param dest_path A path to the destination file.
+    # @param sync_hard True to do physical synchronization with the hardware.
     # @return The future for the result status.
-    def copy_file_data(dest_path)
+    def copy_file_data(dest_path, sync_hard=false)
       # (native code)
     end
   

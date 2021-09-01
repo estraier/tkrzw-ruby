@@ -1347,17 +1347,20 @@ static VALUE dbm_synchronize(int argc, VALUE* argv, VALUE vself) {
 }
 
 // Implementation of DBM#copy_file_data.
-static VALUE dbm_copy_file_data(VALUE vself, VALUE vdestpath) {
+static VALUE dbm_copy_file_data(int argc, VALUE* argv, VALUE vself) {
   StructDBM* sdbm = nullptr;
   Data_Get_Struct(vself, StructDBM, sdbm);
   if (sdbm->dbm == nullptr) {
     rb_raise(rb_eRuntimeError, "not opened database");
   }
+  volatile VALUE vdestpath, vsynchard;
+  rb_scan_args(argc, argv, "11", &vdestpath, &vsynchard);
   vdestpath = StringValueEx(vdestpath);
   const std::string_view dest_path = GetStringView(vdestpath);
+  const bool sync_hard = RTEST(vsynchard);
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(sdbm->concurrent, [&]() {
-      status = sdbm->dbm->CopyFileData(std::string(dest_path));
+      status = sdbm->dbm->CopyFileData(std::string(dest_path), sync_hard);
     });
   return MakeStatusValue(std::move(status));
 }
@@ -1732,7 +1735,7 @@ static void DefineDBM() {
   rb_define_method(cls_dbm, "rebuild", (METHOD)dbm_rebuild, -1);
   rb_define_method(cls_dbm, "should_be_rebuilt?", (METHOD)dbm_should_be_rebuilt, 0);
   rb_define_method(cls_dbm, "synchronize", (METHOD)dbm_synchronize, -1);
-  rb_define_method(cls_dbm, "copy_file_data", (METHOD)dbm_copy_file_data, 1);
+  rb_define_method(cls_dbm, "copy_file_data", (METHOD)dbm_copy_file_data, -1);
   rb_define_method(cls_dbm, "export", (METHOD)dbm_export, 1);
   rb_define_method(cls_dbm, "export_to_flat_records", (METHOD)dbm_export_to_flat_records, 1);
   rb_define_method(cls_dbm, "import_from_flat_records", (METHOD)dbm_import_from_flat_records, 1);
@@ -2379,15 +2382,18 @@ static VALUE asyncdbm_synchronize(int argc, VALUE* argv, VALUE vself) {
 }
 
 // Implementation of AsyncDBM#copy_file_data.
-static VALUE asyncdbm_copy_file_data(VALUE vself, VALUE vdestpath) {
+static VALUE asyncdbm_copy_file_data(int argc, VALUE* argv, VALUE vself) {
   StructAsyncDBM* sasync = nullptr;
   Data_Get_Struct(vself, StructAsyncDBM, sasync);
   if (sasync->async == nullptr) {
     rb_raise(rb_eRuntimeError, "destructed object");
   }
+  volatile VALUE vdestpath, vsynchard;
+  rb_scan_args(argc, argv, "11", &vdestpath, &vsynchard);
   vdestpath = StringValueEx(vdestpath);
   const std::string_view dest_path = GetStringView(vdestpath);
-  tkrzw::StatusFuture future(sasync->async->CopyFileData(std::string(dest_path)));
+  const bool sync_hard = RTEST(vsynchard);
+  tkrzw::StatusFuture future(sasync->async->CopyFileData(std::string(dest_path), sync_hard));
   return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
 }
 
@@ -2481,7 +2487,7 @@ static void DefineAsyncDBM() {
   rb_define_method(cls_asyncdbm, "clear", (METHOD)asyncdbm_clear, 0);
   rb_define_method(cls_asyncdbm, "rebuild", (METHOD)asyncdbm_rebuild, -1);
   rb_define_method(cls_asyncdbm, "synchronize", (METHOD)asyncdbm_synchronize, -1);
-  rb_define_method(cls_asyncdbm, "copy_file_data", (METHOD)asyncdbm_copy_file_data, 1);
+  rb_define_method(cls_asyncdbm, "copy_file_data", (METHOD)asyncdbm_copy_file_data, -1);
   rb_define_method(cls_asyncdbm, "export", (METHOD)asyncdbm_export, 1);
   rb_define_method(cls_asyncdbm, "export_to_flat_records",
                    (METHOD)asyncdbm_export_to_flat_records, 1);
