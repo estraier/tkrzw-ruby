@@ -450,7 +450,7 @@ module Tkrzw
     end
 
     # Gets the timestamp in seconds of the last modified time.
-    # @return The timestamp of the last modified time, or None on failure.
+    # @return The timestamp of the last modified time, or nil on failure.
     def timestamp()
       # (native code)
     end
