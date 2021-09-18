@@ -449,6 +449,12 @@ module Tkrzw
       # (native code)
     end
 
+    # Gets the timestamp in seconds of the last modified time.
+    # @return The timestamp of the last modified time, or None on failure.
+    def timestamp()
+      # (native code)
+    end
+
     # Removes all records.
     # @return The result status.
     def clear()

@@ -1265,8 +1265,8 @@ static VALUE dbm_file_size(VALUE vself) {
   return Qnil;
 }
 
-// Implementation of DBM#path.
-static VALUE dbm_path(VALUE vself) {
+// Implementation of DBM#file_path.
+static VALUE dbm_file_path(VALUE vself) {
   StructDBM* sdbm = nullptr;
   Data_Get_Struct(vself, StructDBM, sdbm);
   if (sdbm->dbm == nullptr) {
@@ -1279,6 +1279,24 @@ static VALUE dbm_path(VALUE vself) {
     });
   if (status == tkrzw::Status::SUCCESS) {
     return rb_str_new(path.data(), path.size());
+  }
+  return Qnil;
+}
+
+// Implementation of DBM#timestamp.
+static VALUE dbm_timestamp(VALUE vself) {
+  StructDBM* sdbm = nullptr;
+  Data_Get_Struct(vself, StructDBM, sdbm);
+  if (sdbm->dbm == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened database");
+  }
+  double timestamp = 0;
+
+  NativeFunction(sdbm->concurrent, [&]() {
+      timestamp = sdbm->dbm->GetTimestampSimple();
+    });
+  if (timestamp >= 0) {
+    return rb_float_new(timestamp);
   }
   return Qnil;
 }
@@ -1730,7 +1748,8 @@ static void DefineDBM() {
   rb_define_method(cls_dbm, "compare_exchange_multi", (METHOD)dbm_compare_exchange_multi, 2);
   rb_define_method(cls_dbm, "count", (METHOD)dbm_count, 0);
   rb_define_method(cls_dbm, "file_size", (METHOD)dbm_file_size, 0);
-  rb_define_method(cls_dbm, "path", (METHOD)dbm_path, 0);
+  rb_define_method(cls_dbm, "file_path", (METHOD)dbm_file_path, 0);
+  rb_define_method(cls_dbm, "timestamp", (METHOD)dbm_timestamp, 0);
   rb_define_method(cls_dbm, "clear", (METHOD)dbm_clear, 0);
   rb_define_method(cls_dbm, "rebuild", (METHOD)dbm_rebuild, -1);
   rb_define_method(cls_dbm, "should_be_rebuilt?", (METHOD)dbm_should_be_rebuilt, 0);

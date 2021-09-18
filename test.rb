@@ -162,7 +162,8 @@ class TkrzwTest < Test::Unit::TestCase
       assert_equal(10, dbm.count)
       assert_true(dbm.file_size > 0)
       if not path.empty?
-        dbm.path.include?(path)
+        assert_true(dbm.file_path.include?(path))
+        assert_true(dbm.timestamp() > 0)
       end
       assert_true(dbm.open?)
       assert_true(dbm.writable?)
