@@ -824,6 +824,9 @@ static VALUE dbm_open(int argc, VALUE* argv, VALUE vself) {
   if (tkrzw::StrToBool(tkrzw::SearchMap(params, "no_lock", "false"))) {
     open_options |= tkrzw::File::OPEN_NO_LOCK;
   }
+  if (tkrzw::StrToBool(tkrzw::SearchMap(params, "sync_hard", "false"))) {
+    open_options |= tkrzw::File::OPEN_SYNC_HARD;
+  }
   std::string encoding = tkrzw::SearchMap(params, "encoding", "");
   if (encoding.empty()) {
     encoding = "ASCII-8BIT";
@@ -833,6 +836,7 @@ static VALUE dbm_open(int argc, VALUE* argv, VALUE vself) {
   params.erase("no_create");
   params.erase("no_wait");
   params.erase("no_lock");
+  params.erase("sync_hard");
   params.erase("encoding");
   if (num_shards >= 0) {
     sdbm->dbm.reset(new tkrzw::ShardDBM());
@@ -2572,6 +2576,9 @@ static VALUE file_open(int argc, VALUE* argv, VALUE vself) {
   }
   if (tkrzw::StrToBool(tkrzw::SearchMap(params, "no_lock", "false"))) {
     open_options |= tkrzw::File::OPEN_NO_LOCK;
+  }
+  if (tkrzw::StrToBool(tkrzw::SearchMap(params, "sync_hard", "false"))) {
+    open_options |= tkrzw::File::OPEN_SYNC_HARD;
   }
   std::string encoding = tkrzw::SearchMap(params, "encoding", "");
   if (encoding.empty()) {
