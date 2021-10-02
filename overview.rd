@@ -17,7 +17,7 @@ Tkrzw is a library implementing DBM with various algorithms.  It features high d
 - StdHashDBM : On-memory DBM implementations using std::unordered_map.
 - StdTreeDBM : On-memory DBM implementations using std::map.
 
-Whereas Tkrzw is C++ library, this package provides its Ruby interface.  All above data structures are available via one adapter class "DBM". Read the {homepage}[http://dbmx.net/tkrzw/] for details.
+Whereas Tkrzw is C++ library, this package provides its Ruby interface.  All above data structures are available via one adapter class "DBM". Read the {homepage}[https://dbmx.net/tkrzw/] for details.
 
 DBM stores key-value pairs of strings.  You can specify any type of objects as keys and values if they can be converted into strings.  When you retreive keys and values, they are always represented as strings.
 
