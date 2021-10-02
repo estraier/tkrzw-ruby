@@ -73,6 +73,8 @@ class TkrzwTest < Test::Unit::TestCase
     assert_true(expt.is_a?(StatusException))
     assert_equal("NOT_IMPLEMENTED_ERROR: void", expt.message)
     assert_equal(status, expt.status)
+    assert_equal("SUCCESS", Status.code_name(Status::SUCCESS))
+    assert_equal("INFEASIBLE_ERROR", Status.code_name(Status::INFEASIBLE_ERROR))
   end
 
   # Basic tests.

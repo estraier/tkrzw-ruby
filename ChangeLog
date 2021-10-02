@@ -1,5 +1,11 @@
 2021-09-20  Mikio Hirabayashi  <hirarin@gmail.com>
 
+	- Release: 0.1.24
+
+	- Add Status.code_name.
+
+2021-09-20  Mikio Hirabayashi  <hirarin@gmail.com>
+
 	- Release: 0.1.23
 
 	- sync_hard of the open options is supported.

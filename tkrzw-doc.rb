@@ -172,6 +172,13 @@ module Tkrzw
     def !=(rhs)
       # (native code)
     end
+
+    # Gets the string name of a status code.
+    # @param code The status code.
+    # @return The name of the status code.
+    def self.code_name(code)
+      # (native code)
+    end
   end
 
   # Future containing a status object and extra data.

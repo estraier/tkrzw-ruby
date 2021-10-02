@@ -498,6 +498,11 @@ static VALUE status_op_ne(VALUE vself, VALUE vrhs) {
   return status->GetCode() == rcode ? Qfalse : Qtrue;
 }
 
+// Implementation of Status.code_name.
+static VALUE status_code_name(VALUE vself, VALUE vcode) {
+  return rb_str_new2(tkrzw::Status::CodeName((tkrzw::Status::Code)NUM2INT(vcode)));
+}
+
 // Creates a status object.
 static VALUE MakeStatusValue(tkrzw::Status&& status) {
   tkrzw::Status* new_status = new tkrzw::Status(status);
@@ -555,6 +560,7 @@ static void DefineStatus() {
   rb_define_method(cls_status, "inspect", (METHOD)status_inspect, 0);
   rb_define_method(cls_status, "==", (METHOD)status_op_eq, 1);
   rb_define_method(cls_status, "!=", (METHOD)status_op_ne, 1);
+  rb_define_singleton_method(cls_status, "code_name", (METHOD)status_code_name, 1);
 }
 
 // Implementation of Future#del.
