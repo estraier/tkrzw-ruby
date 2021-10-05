@@ -160,6 +160,11 @@ class TkrzwTest < Test::Unit::TestCase
         key = "%08d" % i
         assert_equal(Status::SUCCESS, dbm.remove(key))
       end
+      if ["HashDBM", "TreeDBM", "TinyDBM", "BabyDBM"].include?(class_name)
+        assert_equal(Status::SUCCESS, dbm.set("日本", "東京"))
+        assert_equal("東京", dbm.get("日本"))
+        assert_equal(Status::SUCCESS, dbm.remove("日本"))
+      end
       assert_equal(Status::SUCCESS, dbm.synchronize(false, conf[:synchronize_params]))
       assert_equal(10, dbm.count)
       assert_true(dbm.file_size > 0)
@@ -191,7 +196,7 @@ class TkrzwTest < Test::Unit::TestCase
       sv = dbm.set_and_get("98765", "apple", false)
       assert_equal(Status::SUCCESS, sv[0])
       assert_equal(nil, sv[1])
-      if ["TreeDBM", "TreeDBM", "TinyDBM", "BabyDBM"].include?(class_name)
+      if ["TreeDBM", "TinyDBM", "BabyDBM"].include?(class_name)
         sv = dbm.set_and_get("98765", "orange", false)
         assert_equal(Status::DUPLICATION_ERROR, sv[0])
         assert_equal("apple", sv[1])
