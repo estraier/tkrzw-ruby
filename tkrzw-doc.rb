@@ -595,7 +595,7 @@ module Tkrzw
       # (native code)
     end
 
-    # Gets the number of records, to enable the len operator.
+    # Gets the number of records.
     # @return The number of records on success, or -1 on failure.
     def to_i()
       # (native code)
