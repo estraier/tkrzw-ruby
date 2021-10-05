@@ -734,3 +734,6 @@ class TkrzwTest < Test::Unit::TestCase
     file.destruct
   end
 end
+
+
+# END OF FILE

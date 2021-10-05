@@ -460,7 +460,7 @@ static VALUE status_to_s(VALUE vself) {
 static VALUE status_inspect(VALUE vself) {
   tkrzw::Status* status = nullptr;
   Data_Get_Struct(vself, tkrzw::Status, status);
-  const std::string str = tkrzw::StrCat("#<tkrzw::Status:", *status, ">");
+  const std::string str = tkrzw::StrCat("#<Tkrzw::Status:", *status, ">");
   return rb_str_new(str.data(), str.size());
 }
 
@@ -703,7 +703,7 @@ static VALUE future_inspect(VALUE vself) {
   if (sfuture->future == nullptr) {
     rb_raise(rb_eRuntimeError, "destructed object");
   }
-  const std::string str = tkrzw::SPrintF("#<tkrzw::Future: %p>", (void*)sfuture->future.get());
+  const std::string str = tkrzw::SPrintF("#<Tkrzw::Future: %p>", (void*)sfuture->future.get());
   return rb_str_new(str.data(), str.size());
 }
 
@@ -1654,7 +1654,7 @@ static VALUE dbm_inspect(VALUE vself) {
       count = sdbm->dbm->CountSimple();
     });
   const std::string expr = tkrzw::StrCat(
-      "#<tkrzw::DBM:", class_name, ":", tkrzw::StrEscapeC(path, true), ":", count, ">");
+      "#<Tkrzw::DBM:", class_name, ":", tkrzw::StrEscapeC(path, true), ":", count, ">");
   return rb_str_new(expr.data(), expr.size());
 }
 
@@ -1801,7 +1801,7 @@ static VALUE iter_new(VALUE cls) {
 // Implementation of Iterator#initialize.
 static VALUE iter_initialize(VALUE vself, VALUE vdbm) {
   if (!rb_obj_is_instance_of(vdbm, cls_dbm)) {
-    rb_raise(rb_eArgError, "#<tkrzw::StatusException>");
+    rb_raise(rb_eArgError, "#<Tkrzw::StatusException>");
   }
   StructDBM* sdbm = nullptr;
   Data_Get_Struct(vdbm, StructDBM, sdbm);
@@ -2071,7 +2071,7 @@ static VALUE iter_inspect(VALUE vself) {
     key = "(unlocated)";
   }
   const std::string& expr =
-      tkrzw::StrCat("#<tkrz::Iterator:", tkrzw::StrEscapeC(key, true), ">");
+      tkrzw::StrCat("#<Tkrzw::Iterator:", tkrzw::StrEscapeC(key, true), ">");
   return rb_str_new(expr.data(), expr.size());
 }
 
@@ -2153,7 +2153,7 @@ static VALUE asyncdbm_inspect(VALUE vself) {
     rb_raise(rb_eRuntimeError, "destructed object");
   }
   const std::string str = tkrzw::SPrintF(
-      "#<tkrzw::AsyncDBM: %p>", (void*)sasync->async.get());
+      "#<Tkrzw::AsyncDBM: %p>", (void*)sasync->async.get());
   return rb_str_new(str.data(), str.size());
 }
 
@@ -2832,7 +2832,7 @@ static VALUE file_inspect(VALUE vself) {
   const std::string path = sfile->file->GetPathSimple();
   const int64_t size = sfile->file->GetSizeSimple();
   const std::string expr = tkrzw::StrCat(
-      "#<tkrzw::File:", class_name, ":", tkrzw::StrEscapeC(path, true), ":", size, ">");
+      "#<Tkrzw::File:", class_name, ":", tkrzw::StrEscapeC(path, true), ":", size, ">");
   return rb_str_new(expr.data(), expr.size());
 }
 
