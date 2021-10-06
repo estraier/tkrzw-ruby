@@ -380,9 +380,9 @@ module Tkrzw
     end
 
     # Removes records of keys.
-    # @param key The keys of the records.
+    # @param keys The keys of the records.
     # @return The result status.  If there are missing records, NOT_FOUND_ERROR is returned.
-    def remove_multi(keys)
+    def remove_multi(*keys)
       # (native code)
     end
 
@@ -810,9 +810,9 @@ module Tkrzw
     end
 
     # Removes records of keys.
-    # @param key The keys of the records.
+    # @param keys The keys of the records.
     # @return The future for the result status.  If there are missing records, NOT_FOUND_ERROR is set.
-    def remove_multi(keys)
+    def remove_multi(*keys)
       # (native code)
     end
 
