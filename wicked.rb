@@ -35,7 +35,7 @@ def main
   GC.start
   start_mem_usage = Utility.get_memory_usage
   dbm = DBM.new
-  dbm.open(path, true, open_params)
+  dbm.open(path, true, open_params).or_die
   print("Doing:\n")
   start_time = Time.now
   tasks = []
