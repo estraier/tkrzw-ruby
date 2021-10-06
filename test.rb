@@ -147,7 +147,7 @@ class TkrzwTest < Test::Unit::TestCase
       open_params = conf[:open_params].clone
       open_params[:truncate] = true
       open_params[:encoding] = "UTF-8"
-      assert_equal(Status::SUCCESS, dbm.open(path, true, open_params))
+      assert_equal(Status::SUCCESS, dbm.open(path, true, **open_params))
       inspect = dbm.inspect_details
       class_name = inspect["class"]
       assert_equal(conf[:expected_class], class_name)
@@ -165,7 +165,7 @@ class TkrzwTest < Test::Unit::TestCase
         assert_equal("東京", dbm.get("日本"))
         assert_equal(Status::SUCCESS, dbm.remove("日本"))
       end
-      assert_equal(Status::SUCCESS, dbm.synchronize(false, conf[:synchronize_params]))
+      assert_equal(Status::SUCCESS, dbm.synchronize(false, **conf[:synchronize_params]))
       assert_equal(10, dbm.count)
       assert_true(dbm.file_size > 0)
       if not path.empty?
@@ -213,7 +213,7 @@ class TkrzwTest < Test::Unit::TestCase
         assert_equal(Status::SUCCESS, dbm.set("98765", "banana"))
       end
       assert_equal(Status::SUCCESS, dbm.remove("98765"))
-      assert_equal(Status::SUCCESS, dbm.synchronize(false, conf[:synchronize_params]))
+      assert_equal(Status::SUCCESS, dbm.synchronize(false, **conf[:synchronize_params]))
       records = {}
       (0...20).each do |i|
         key = "%08d" % i
@@ -225,7 +225,7 @@ class TkrzwTest < Test::Unit::TestCase
         assert_equal(Status::SUCCESS, status)
         records[key] = value
       end
-      assert_equal(Status::SUCCESS, dbm.rebuild(conf[:rebuild_params]))
+      assert_equal(Status::SUCCESS, dbm.rebuild(**conf[:rebuild_params]))
       iter_records = {}
       iter = dbm.make_iterator
       status = Status.new
@@ -282,7 +282,7 @@ class TkrzwTest < Test::Unit::TestCase
           if open_params.has_key?(:num_shards)
             params[:num_shards] = 0
           end
-          assert_equal(Status::SUCCESS, copy_dbm.open(copy_path, false, params))
+          assert_equal(Status::SUCCESS, copy_dbm.open(copy_path, false, **params))
         end
         assert_true(copy_dbm.healthy?)
         iter_records = {}
@@ -402,7 +402,7 @@ class TkrzwTest < Test::Unit::TestCase
       open_params = conf[:open_params].clone
       open_params[:truncate] = true
       open_params[:encoding] = "UTF-8"
-      assert_equal(Status::SUCCESS, dbm.open(path, true, open_params))
+      assert_equal(Status::SUCCESS, dbm.open(path, true, **open_params))
       iter = dbm.make_iterator
       assert_equal(Status::SUCCESS, iter.first)
       assert_equal(Status::SUCCESS, iter.last)
@@ -538,7 +538,7 @@ class TkrzwTest < Test::Unit::TestCase
       dbm = DBM.new
       open_params = conf[:open_params].clone
       open_params[:truncate] = true
-      assert_equal(Status::SUCCESS, dbm.open(path, true, open_params))
+      assert_equal(Status::SUCCESS, dbm.open(path, true, **open_params))
       (1..100).each do |i|
         key = "%08d" % i
         value = "%d" % i

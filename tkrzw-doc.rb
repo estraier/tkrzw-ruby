@@ -259,7 +259,7 @@ module Tkrzw
     # Opens a database file.
     # @param path A path of the file.
     # @param writable If true, the file is writable.  If false, it is read-only.
-    # @param params Optional parameters of a hash object.
+    # @param params Optional keyword parameters.
     # @return The result status.
     # The extension of the path indicates the type of the database.
     # - .tkh : File hash database (HashDBM)
@@ -357,7 +357,7 @@ module Tkrzw
 
     # Sets multiple records of the keyword arguments.
     # @param overwrite Whether to overwrite the existing value if there's a record with the same key.  If true, the existing value is overwritten by the new value.  If false, the operation is given up and an error status is returned.
-    # @param records Records to store.
+    # @param records Records to store, specified as keyword parameters.
     # @return The result status.  If there are records avoiding overwriting, DUPLICATION_ERROR is returned.
     def set_multi(overwrite=true, **records)
       # (native code)
@@ -405,7 +405,7 @@ module Tkrzw
 
     # Appends data to multiple records of the keyword arguments.
     # @param delim The delimiter to put after the existing record.
-    # @param records Records to append.
+    # @param records Records to append, specified as keyword parameters.
     # @return The result status.
     def append_multi(delim="", **records)
       # (native code)
@@ -470,13 +470,13 @@ module Tkrzw
     end
 
     # Rebuilds the entire database.
-    # @param params Optional parameters of a hash object.
+    # @param params Optional keyword parameters.
     # @return The result status.
     # The optional parameters are the same as the "open" method.  Omitted tuning parameters are kept the same or implicitly optimized.<br>
     # In addition, HashDBM, TreeDBM, and SkipDBM supports the following parameters.
     # - skip_broken_records (bool): If true, the operation continues even if there are broken records which can be skipped.
     # - sync_hard (bool): If true, physical synchronization with the hardware is done before finishing the rebuilt file.
-    def rebuild(params={})
+    def rebuild(**params)
       # (native code)
     end
 
@@ -488,10 +488,10 @@ module Tkrzw
 
     # Synchronizes the content of the database to the file system.
     # @param hard True to do physical synchronization with the hardware or false to do only logical synchronization with the file system.
-    # @param params Optional parameters of a hash object.
+    # @param params Optional keyword parameters.
     # @return The result status.
     # Only SkipDBM uses the optional parameters.  The "merge" parameter specifies paths of databases to merge, separated by colon.  The "reducer" parameter specifies the reducer to apply to records of the same key.  "ReduceToFirst", "ReduceToSecond", "ReduceToLast", etc are supported.
-    def synchronize(hard, params={})
+    def synchronize(hard, **params)
       # (native code)
     end
 
@@ -868,19 +868,19 @@ module Tkrzw
     end
 
     # Rebuilds the entire database.
-    # @param params Optional parameters of a hash object.
+    # @param params Optional keyword parameters.
     # @return The future for the result status.
     # The parameters work in the same way as with DBM#rebuild.
-    def rebuild(params={})
+    def rebuild(**params)
       # (native code)
     end
 
     # Synchronizes the content of the database to the file system.
     # @param hard True to do physical synchronization with the hardware or false to do only logical synchronization with the file system.
-    # @param params Optional parameters of a hash object.
+    # @param params Optional keyword parameters.
     # @return The future for the result status.
     # The parameters work in the same way as with DBM#synchronize.
-    def synchronize(hard, params={})
+    def synchronize(hard, **params)
       # (native code)
     end
 
@@ -940,7 +940,7 @@ module Tkrzw
     # Opens a file.
     # @param path A path of the file.
     # @param writable If true, the file is writable.  If false, it is read-only.
-    # @param params Optional parameters.
+    # @param params Optional keyword parameters.
     # @return The result status.
     # The optional parameters can include an option for the concurrency tuning.  By default, database operatins are done under the GIL (Global Interpreter Lock), which means that database operations are not done concurrently even if you use multiple threads.  If the "concurrent" parameter is true, database operations are done outside the GIL, which means that database operations can be done concurrently if you use multiple threads.  However, the downside is that swapping thread data is costly so the actual throughput is often worse in the concurrent mode than in the normal mode.  Therefore, the concurrent mode should be used only if the database is huge and it can cause blocking of threads in multi-thread usage.
     # By default, the encoding of retrieved record data by the "get" method is implicitly set as "ASCII-8BIT".  If you want to change the implicit encoding to "UTF-8" or others, set the encoding name as the value of the "encoding" parameter.
