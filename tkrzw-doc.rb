@@ -617,8 +617,15 @@ module Tkrzw
     # Sets a record of a key and a value, to enable the []= operator.
     # @param key The key of the record.
     # @param value The value of the record.
-    # @return The value of the matching record or nil on failure.
+    # @return The new value of the record or nil on failure.
     def []=(key, value)
+      # (native code)
+    end
+
+    # Removes a record of a key.
+    # @param key The key of the record.
+    # @return The old value of the record or nil on failure.
+    def delete(key)
       # (native code)
     end
 

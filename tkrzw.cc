@@ -1696,6 +1696,45 @@ static VALUE dbm_ss_set(VALUE vself, VALUE vkey, VALUE vvalue) {
   return vvalue;
 }
 
+// Implementation of DBM#delete.
+static VALUE dbm_delete(VALUE vself, VALUE vkey) {
+  StructDBM* sdbm = nullptr;
+  Data_Get_Struct(vself, StructDBM, sdbm);
+  if (sdbm->dbm == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened database");
+  }
+  vkey = StringValueEx(vkey);
+  const std::string_view key = GetStringView(vkey);
+  tkrzw::Status impl_status(tkrzw::Status::SUCCESS);
+  std::string old_value;
+  class Processor final : public tkrzw::DBM::RecordProcessor {
+   public:
+    Processor(tkrzw::Status* status, std::string* old_value)
+        : status_(status), old_value_(old_value) {}
+    std::string_view ProcessFull(std::string_view key, std::string_view value) override {
+      *old_value_ = value;
+      return REMOVE;
+    }
+    std::string_view ProcessEmpty(std::string_view key) override {
+      status_->Set(tkrzw::Status::NOT_FOUND_ERROR);
+      return NOOP;
+    }
+   private:
+    tkrzw::Status* status_;
+    std::string* old_value_;
+  };
+  Processor proc(&impl_status, &old_value);
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sdbm->concurrent, [&]() {
+      status = sdbm->dbm->Process(key, &proc, true);
+    });
+  status |= impl_status;
+  if (status != tkrzw::Status::SUCCESS) {
+    return Qnil;
+  }
+  return MakeString(old_value, sdbm->venc);
+}
+
 // Implementation of DBM#each.
 static VALUE dbm_each(VALUE vself) {
   StructDBM* sdbm = nullptr;
@@ -1782,6 +1821,7 @@ static void DefineDBM() {
   rb_define_method(cls_dbm, "inspect", (METHOD)dbm_inspect, 0);
   rb_define_method(cls_dbm, "[]", (METHOD)dbm_ss_get, 1);
   rb_define_method(cls_dbm, "[]=", (METHOD)dbm_ss_set, 2);
+  rb_define_method(cls_dbm, "delete", (METHOD)dbm_delete, 1);
   rb_define_method(cls_dbm, "each", (METHOD)dbm_each, 0);
 }
 
