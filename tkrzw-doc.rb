@@ -482,7 +482,7 @@ module Tkrzw
 
     # Checks whether the database should be rebuilt.
     # @return True to be optimized or False with no necessity.
-    def should_be_rebuilt()
+    def should_be_rebuilt?()
       # (native code)
     end
 

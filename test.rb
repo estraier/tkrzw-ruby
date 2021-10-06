@@ -226,6 +226,7 @@ class TkrzwTest < Test::Unit::TestCase
         records[key] = value
       end
       assert_equal(Status::SUCCESS, dbm.rebuild(**conf[:rebuild_params]))
+      assert_true([true, false].include?(dbm.should_be_rebuilt?()))
       iter_records = {}
       iter = dbm.make_iterator
       status = Status.new
