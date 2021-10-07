@@ -1,4 +1,4 @@
-#! /usr/bin/ruby -w
+#! /usr/bin/ruby -I. -w
 # -*- coding: utf-8 -*-
 #--------------------------------------------------------------------------------------------------
 # Example for basic usage of the tree database
