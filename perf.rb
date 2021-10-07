@@ -32,7 +32,7 @@ def main
   printf("params: %s\n", open_params)
   printf("num_iterations: %d\n", num_iterations)
   printf("num_threads: %d\n", num_threads)
-  printf("is_random: %s", is_random)
+  printf("is_random: %s\n", is_random)
   printf("\n")
   open_params["truncate"] = true
   GC.start
