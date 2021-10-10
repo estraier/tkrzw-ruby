@@ -134,7 +134,7 @@ class TkrzwTest < Test::Unit::TestCase
       synchronize_params: {},
       expected_class: "StdTreeDBM"},
      {path: "casket",
-      open_params: {num_shards: 4, dbm: "hash", num_buckets: 100, lock_mem_buckets: false},
+      open_params: {num_shards: 4, dbm: "hash", num_buckets: 100},
       rebuild_params: {},
       synchronize_params: {},
       expected_class: "HashDBM"},
@@ -476,6 +476,7 @@ class TkrzwTest < Test::Unit::TestCase
               assert_equal(value, record[1])
               iter.next.or_die
             end
+            iter.destruct
           elsif rnd_state.rand(4) == 0
             status = Status.new
             rec_value = dbm.get(key, status)
