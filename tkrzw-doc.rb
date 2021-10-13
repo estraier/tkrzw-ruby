@@ -424,7 +424,7 @@ module Tkrzw
 
     # Compares the value of a record and exchanges if the condition meets.
     # @param key The key of the record.
-    # @param expected The expected value.  If it is None, no existing record is expected.
+    # @param expected The expected value.  If it is nil, no existing record is expected.
     # @param desired The desired value.  If it is nil, the record is to be removed.
     # @return The result status.  If the condition doesn't meet, INFEASIBLE_ERROR is returned.
     def compare_exchange(key, expected, desired)
@@ -447,6 +447,16 @@ module Tkrzw
     # @param desired An array of pairs of the record keys and their desired values.  If the value is nil, the record is to be removed.
     # @return The result status.  If the condition doesn't meet, INFEASIBLE_ERROR is returned.
     def compare_exchange_multi(expected, desired)
+      # (native code)
+    end
+
+    # Changes the key of a record.
+    # @param old_key The old key of the record.
+    # @param new_key The new key of the record.
+    # @param overwrite Whether to overwrite the existing record of the new key.
+    # @return The result status.  If there's no matching record to the old key, NOT_FOUND_ERROR is returned.  If the overwrite flag is false and there is an existing record of the new key, DUPLICATION ERROR is returned.
+    # This method is done atomically by ProcessMulti.  The other threads observe that the record has either the old key or the new key.  No intermediate states are observed.
+    def rekey(old_key, new_key, overwrite=true)
       # (native code)
     end
 
@@ -748,6 +758,20 @@ module Tkrzw
       # (native code)
     end
 
+    # Gets the current record and moves the iterator to the next record.
+    # @param status A status object to which the result status is assigned.  It can be omitted.
+    # @return A tuple of The key and the value of the current record.  On failure, nil is returned.
+    def step(status=nil)
+      # (native code)
+    end
+
+    # Jumps to the first record, removes it, and get the data.
+    # @param status A status object to which the result status is assigned.  It can be omitted.
+    # @return A tuple of The key and the value of the first record.  On failure, nil is returned.
+    def pop_first(status=nil)
+      # (native code)
+    end
+
     # Returns a string representation of the content.
     # @return The string representation of the content.
     def to_s()
@@ -854,7 +878,7 @@ module Tkrzw
 
     # Compares the value of a record and exchanges if the condition meets.
     # @param key The key of the record.
-    # @param expected The expected value.  If it is None, no existing record is expected.
+    # @param expected The expected value.  If it is nil, no existing record is expected.
     # @param desired The desired value.  If it is nil, the record is to be removed.
     # @return The future for the result status.  If the condition doesn't meet, INFEASIBLE_ERROR is set.
     def compare_exchange(key, expected, desired)

@@ -230,7 +230,7 @@ class TkrzwTest < Test::Unit::TestCase
       iter_records = {}
       iter = dbm.make_iterator
       status = Status.new
-      record = iter.get(status);
+      record = iter.get(status)
       assert_equal(Status::NOT_FOUND_ERROR, status)
       assert_equal(nil, record)
       assert_equal(Status::SUCCESS, iter.first)
@@ -347,11 +347,10 @@ class TkrzwTest < Test::Unit::TestCase
                        [["hop", nil], ["step", nil]]))
       assert_equal(nil, export_dbm.get("hop"))
       assert_equal(nil, export_dbm.get("step"))
-      iter = export_dbm.make_iterator
-      assert_equal(Status::SUCCESS, iter.first)
-      assert_equal(Status::SUCCESS, iter.set("foobar"))
-      assert_equal(Status::SUCCESS, iter.remove)
-      iter.destruct
+      export_iter = export_dbm.make_iterator
+      assert_equal(Status::SUCCESS, export_iter.first)
+      assert_equal(Status::SUCCESS, export_iter.set("foobar"))
+      assert_equal(Status::SUCCESS, export_iter.remove)
       assert_equal(0, export_dbm.to_i)
       assert_equal(Status::SUCCESS, export_dbm.append("foo", "bar", ","))
       assert_equal(Status::SUCCESS, export_dbm.append("foo", "baz", ","))
@@ -379,6 +378,37 @@ class TkrzwTest < Test::Unit::TestCase
       status = Status.new
       assert_equal(nil, export_dbm.get("three", status))
       assert_equal(Status::NOT_FOUND_ERROR, status)
+      assert_equal(Status::SUCCESS, export_dbm.set("zero", "foo"))
+      assert_equal(Status::SUCCESS, export_dbm.rekey("zero", "one", true))
+      assert_equal(nil, export_dbm.get("zero"))
+      assert_equal("foo", export_dbm.get("one"))
+      step_count = 0
+      assert_equal(Status::SUCCESS, export_iter.first)
+      while true
+        status.set(Status::UNKNOWN_ERROR)
+        record = export_iter.step(status)
+        if not record
+          assert_equal(Status::NOT_FOUND_ERROR, status)
+          break
+        end
+        assert_equal(Status::SUCCESS, status)
+        step_count += 1
+      end
+      assert_equal(export_dbm.count, step_count)
+      pop_count = 0
+      while true
+        status.set(Status::UNKNOWN_ERROR)
+        record = export_iter.pop_first(status)
+        if not record
+          assert_equal(Status::NOT_FOUND_ERROR, status)
+          break
+        end
+        assert_equal(Status::SUCCESS, status)
+        pop_count += 1
+      end
+      assert_equal(step_count, pop_count)
+      assert_equal(0, export_dbm.count)
+      export_iter.destruct
       assert_equal(Status::SUCCESS, export_dbm.close)
       export_dbm.destruct
       assert_equal(Status::SUCCESS, dbm.close)
