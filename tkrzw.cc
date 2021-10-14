@@ -1257,16 +1257,17 @@ static VALUE dbm_rekey(int argc, VALUE* argv, VALUE vself) {
   if (sdbm->dbm == nullptr) {
     rb_raise(rb_eRuntimeError, "not opened database");
   }
-  volatile VALUE vold_key, vnew_key, voverwrite;
-  rb_scan_args(argc, argv, "21", &vold_key, &vnew_key, &voverwrite);
+  volatile VALUE vold_key, vnew_key, voverwrite, vcopying;
+  rb_scan_args(argc, argv, "22", &vold_key, &vnew_key, &voverwrite);
   vold_key = StringValueEx(vold_key);
   const std::string_view old_key = GetStringView(vold_key);
   vnew_key = StringValueEx(vnew_key);
   const std::string_view new_key = GetStringView(vnew_key);
   const bool overwrite = argc > 2 ? RTEST(voverwrite) : true;
+  const bool copying = argc > 3 ? RTEST(vcopying) : false;
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(sdbm->concurrent, [&]() {
-      status = sdbm->dbm->Rekey(old_key, new_key, overwrite);
+      status = sdbm->dbm->Rekey(old_key, new_key, overwrite, copying);
     });
   return MakeStatusValue(std::move(status));
 }
