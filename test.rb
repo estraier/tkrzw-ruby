@@ -398,7 +398,7 @@ class TkrzwTest < Test::Unit::TestCase
       pop_count = 0
       while true
         status.set(Status::UNKNOWN_ERROR)
-        record = export_iter.pop_first(status)
+        record = export_dbm.pop_first(status)
         if not record
           assert_equal(Status::NOT_FOUND_ERROR, status)
           break

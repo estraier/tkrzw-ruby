@@ -461,6 +461,13 @@ module Tkrzw
       # (native code)
     end
 
+    # Gets the first record and removes it.
+    # @param status A status object to which the result status is assigned.  It can be omitted.
+    # @return A tuple of The key and the value of the first record.  On failure, nil is returned.
+    def pop_first(status=nil)
+      # (native code)
+    end
+
     # Gets the number of records.
     # @return The number of records on success, or nil on failure.
     def count()
@@ -763,13 +770,6 @@ module Tkrzw
     # @param status A status object to which the result status is assigned.  It can be omitted.
     # @return A tuple of The key and the value of the current record.  On failure, nil is returned.
     def step(status=nil)
-      # (native code)
-    end
-
-    # Jumps to the first record, removes it, and get the data.
-    # @param status A status object to which the result status is assigned.  It can be omitted.
-    # @return A tuple of The key and the value of the first record.  On failure, nil is returned.
-    def pop_first(status=nil)
       # (native code)
     end
 

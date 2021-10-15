@@ -1272,6 +1272,32 @@ static VALUE dbm_rekey(int argc, VALUE* argv, VALUE vself) {
   return MakeStatusValue(std::move(status));
 }
 
+// Implementation of DBM#pop_first.
+static VALUE dbm_pop_first(int argc, VALUE* argv, VALUE vself) {
+  StructDBM* sdbm = nullptr;
+  Data_Get_Struct(vself, StructDBM, sdbm);
+  if (sdbm->dbm == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened database");
+  }
+  volatile VALUE vstatus;
+  rb_scan_args(argc, argv, "01", &vstatus);
+  std::string key, value;
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sdbm->concurrent, [&]() {
+      status = sdbm->dbm->PopFirst(&key, &value);
+    });
+  if (rb_obj_is_instance_of(vstatus, cls_status)) {
+    SetStatusValue(vstatus, status);
+  }
+  if (status == tkrzw::Status::SUCCESS) {
+    volatile VALUE vary = rb_ary_new2(2);
+    rb_ary_push(vary, MakeString(key, sdbm->venc));
+    rb_ary_push(vary, MakeString(value, sdbm->venc));
+    return vary;
+  }
+  return Qnil;
+}
+
 // Implementation of DBM#count.
 static VALUE dbm_count(VALUE vself) {
   StructDBM* sdbm = nullptr;
@@ -1827,6 +1853,7 @@ static void DefineDBM() {
   rb_define_method(cls_dbm, "increment", (METHOD)dbm_increment, -1);
   rb_define_method(cls_dbm, "compare_exchange_multi", (METHOD)dbm_compare_exchange_multi, 2);
   rb_define_method(cls_dbm, "rekey", (METHOD)dbm_rekey, -1);
+  rb_define_method(cls_dbm, "pop_first", (METHOD)dbm_pop_first, -1);
   rb_define_method(cls_dbm, "count", (METHOD)dbm_count, 0);
   rb_define_method(cls_dbm, "file_size", (METHOD)dbm_file_size, 0);
   rb_define_method(cls_dbm, "file_path", (METHOD)dbm_file_path, 0);
@@ -2134,32 +2161,6 @@ static VALUE iter_step(int argc, VALUE* argv, VALUE vself) {
   return Qnil;
 }
 
-// Implementation of Iterator#pop_first.
-static VALUE iter_pop_first(int argc, VALUE* argv, VALUE vself) {
-  StructIter* siter = nullptr;
-  Data_Get_Struct(vself, StructIter, siter);
-  if (siter->iter == nullptr) {
-    rb_raise(rb_eRuntimeError, "destructed Iterator");
-  }
-  volatile VALUE vstatus;
-  rb_scan_args(argc, argv, "01", &vstatus);
-  std::string key, value;
-   tkrzw::Status status(tkrzw::Status::SUCCESS);
-  NativeFunction(siter->concurrent, [&]() {
-      status = siter->iter->PopFirst(&key, &value);
-    });
-  if (rb_obj_is_instance_of(vstatus, cls_status)) {
-    SetStatusValue(vstatus, status);
-  }
-  if (status == tkrzw::Status::SUCCESS) {
-    volatile VALUE vary = rb_ary_new2(2);
-    rb_ary_push(vary, MakeString(key, siter->venc));
-    rb_ary_push(vary, MakeString(value, siter->venc));
-    return vary;
-  }
-  return Qnil;
-}
-
 // Implementation of Iterator#to_s.
 static VALUE iter_to_s(VALUE vself) {
   StructIter* siter = nullptr;
@@ -2218,7 +2219,6 @@ static void DefineIterator() {
   rb_define_method(cls_iter, "set", (METHOD)iter_set, 1);
   rb_define_method(cls_iter, "remove", (METHOD)iter_remove, 0);
   rb_define_method(cls_iter, "step", (METHOD)iter_step, -1);
-  rb_define_method(cls_iter, "pop_first", (METHOD)iter_pop_first, -1);
   rb_define_method(cls_iter, "to_s", (METHOD)iter_to_s, 0);
   rb_define_method(cls_iter, "inspect", (METHOD)iter_inspect, 0);
 }
