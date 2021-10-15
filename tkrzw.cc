@@ -647,6 +647,18 @@ static VALUE future_get(VALUE vself) {
     rb_ary_push(vpair, MakeString(result.second, sfuture->venc));
     return vpair;
   }
+  if (type == typeid(std::pair<tkrzw::Status, std::pair<std::string, std::string>>)) {
+    std::pair<tkrzw::Status, std::pair<std::string, std::string>> result;
+    NativeFunction(sfuture->concurrent, [&]() {
+        result = sfuture->future->GetStringPair();
+      });
+    sfuture->future.reset(nullptr);
+    volatile VALUE vtuple = rb_ary_new2(3);
+    rb_ary_push(vtuple, MakeStatusValue(std::move(result.first)));
+    rb_ary_push(vtuple, MakeString(result.second.first, sfuture->venc));
+    rb_ary_push(vtuple, MakeString(result.second.second, sfuture->venc));
+    return vtuple;
+  }
   if (type == typeid(std::pair<tkrzw::Status, std::vector<std::string>>)) {
     std::pair<tkrzw::Status, std::vector<std::string>> result;
     NativeFunction(sfuture->concurrent, [&]() {
@@ -2496,6 +2508,36 @@ static VALUE asyncdbm_compare_exchange_multi(VALUE vself, VALUE vexpected, VALUE
   return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
 }
 
+// Implementation of AsyncDBM#rekey.
+static VALUE asyncdbm_rekey(int argc, VALUE* argv, VALUE vself) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  volatile VALUE vold_key, vnew_key, voverwrite, vcopying;
+  rb_scan_args(argc, argv, "22", &vold_key, &vnew_key, &voverwrite, &vcopying);
+  vold_key = StringValueEx(vold_key);
+  const std::string_view old_key = GetStringView(vold_key);
+  vnew_key = StringValueEx(vnew_key);
+  const std::string_view new_key = GetStringView(vnew_key);
+  const bool overwrite = argc > 2 ? RTEST(voverwrite) : true;
+  const bool copying = argc > 3 ? RTEST(vcopying) : false;
+  tkrzw::StatusFuture future(sasync->async->Rekey(old_key, new_key, overwrite, copying));
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
+// Implementation of AsyncDBM#pop_first.
+static VALUE asyncdbm_pop_first(VALUE vself) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  tkrzw::StatusFuture future(sasync->async->PopFirst());
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
 // Implementation of AsyncDBM#clear.
 static VALUE asyncdbm_clear(VALUE vself) {
   StructAsyncDBM* sasync = nullptr;
@@ -2639,6 +2681,8 @@ static void DefineAsyncDBM() {
   rb_define_method(cls_asyncdbm, "increment", (METHOD)asyncdbm_increment, -1);
   rb_define_method(cls_asyncdbm, "compare_exchange_multi",
                    (METHOD)asyncdbm_compare_exchange_multi, 2);
+  rb_define_method(cls_asyncdbm, "rekey", (METHOD)asyncdbm_rekey, -1);
+  rb_define_method(cls_asyncdbm, "pop_first", (METHOD)asyncdbm_pop_first, 0);
   rb_define_method(cls_asyncdbm, "clear", (METHOD)asyncdbm_clear, 0);
   rb_define_method(cls_asyncdbm, "rebuild", (METHOD)asyncdbm_rebuild, -1);
   rb_define_method(cls_asyncdbm, "synchronize", (METHOD)asyncdbm_synchronize, -1);

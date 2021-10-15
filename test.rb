@@ -738,6 +738,20 @@ class TkrzwTest < Test::Unit::TestCase
     assert_equal(2, search_result[1].length)
     assert_true(search_result[1].include?("hello"))
     assert_true(search_result[1].include?("hi"))
+    assert_equal(Status::SUCCESS, async.clear().get)
+    assert_equal(Status::SUCCESS, async.set("aa", "AAA").get)
+    assert_equal(Status::SUCCESS, async.rekey("aa", "bb").get)
+    get_result = async.get("bb").get
+    assert_equal(Status::SUCCESS, get_result[0])
+    assert_equal("AAA", get_result[1])
+    pop_result = async.pop_first().get
+    assert_equal(Status::SUCCESS, pop_result[0])
+    assert_equal("bb", pop_result[1])
+    assert_equal("AAA", pop_result[2])
+    pop_result = async.pop_first().get
+    assert_equal(Status::NOT_FOUND_ERROR, pop_result[0])
+    assert_equal("", pop_result[1])
+    assert_equal("", pop_result[2])
     async.destruct
     assert_equal(Status::SUCCESS, dbm.close)
   end

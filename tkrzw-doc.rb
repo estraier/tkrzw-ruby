@@ -456,7 +456,7 @@ module Tkrzw
     # @param overwrite Whether to overwrite the existing record of the new key.
     # @param copying Whether to retain the record of the old key.
     # @return The result status.  If there's no matching record to the old key, NOT_FOUND_ERROR is returned.  If the overwrite flag is false and there is an existing record of the new key, DUPLICATION ERROR is returned.
-    # This method is done atomically by ProcessMulti.  The other threads observe that the record has either the old key or the new key.  No intermediate states are observed.
+    # This method is done atomically.  The other threads observe that the record has either the old key or the new key.  No intermediate states are observed.
     def rekey(old_key, new_key, overwrite=true, copying=false)
       # (native code)
     end
@@ -901,6 +901,23 @@ module Tkrzw
     # @param desired An array of pairs of the record keys and their desired values.  If the value is nil, the record is to be removed.
     # @return The future for the result status.  If the condition doesn't meet, INFEASIBLE_ERROR is set.
     def compare_exchange_multi(expected, desired)
+      # (native code)
+    end
+
+    # Changes the key of a record.
+    # @param old_key The old key of the record.
+    # @param new_key The new key of the record.
+    # @param overwrite Whether to overwrite the existing record of the new key.
+    # @param copying Whether to retain the record of the old key.
+    # @return The future for the result status.  If there's no matching record to the old key, NOT_FOUND_ERROR is set.  If the overwrite flag is false and there is an existing record of the new key, DUPLICATION ERROR is set.
+    # This method is done atomically.  The other threads observe that the record has either the old key or the new key.  No intermediate states are observed.
+    def rekey(old_key, new_key, overwrite=true, copying=false)
+      # (native code)
+    end
+
+    # Gets the first record and removes it.
+    # @return An array of the result status, the key, and the value of the first record.
+    def pop_first(status=nil)
       # (native code)
     end
 
