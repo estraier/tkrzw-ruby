@@ -170,7 +170,7 @@ class TkrzwTest < Test::Unit::TestCase
       assert_true(dbm.file_size > 0)
       if not path.empty?
         assert_true(dbm.file_path.include?(path))
-        assert_true(dbm.timestamp() > 0)
+        assert_true(dbm.timestamp > 0)
       end
       assert_true(dbm.open?)
       assert_true(dbm.writable?)
@@ -226,7 +226,7 @@ class TkrzwTest < Test::Unit::TestCase
         records[key] = value
       end
       assert_equal(Status::SUCCESS, dbm.rebuild(**conf[:rebuild_params]))
-      assert_true([true, false].include?(dbm.should_be_rebuilt?()))
+      assert_true([true, false].include?(dbm.should_be_rebuilt?))
       iter_records = {}
       iter = dbm.make_iterator
       status = Status.new
@@ -408,6 +408,11 @@ class TkrzwTest < Test::Unit::TestCase
       end
       assert_equal(step_count, pop_count)
       assert_equal(0, export_dbm.count)
+      assert_equal(Status::SUCCESS, export_dbm.push_last("foo", 0))
+      record = export_dbm.pop_first(status)
+      assert_equal(Status::SUCCESS, status)
+      assert_equal("\0\0\0\0\0\0\0\0", record[0])
+      assert_equal("foo", record[1])
       export_iter.destruct
       assert_equal(Status::SUCCESS, export_dbm.close)
       export_dbm.destruct
@@ -727,7 +732,7 @@ class TkrzwTest < Test::Unit::TestCase
       futures.append(async.set("hi", "bye", true))
       futures.append(async.set("chao", "adios", true))
       futures.each do |future|
-        Fiber.yield(future.get())
+        Fiber.yield(future.get)
       end
     end
     assert_equal(Status::SUCCESS, fiber.resume)
@@ -738,20 +743,25 @@ class TkrzwTest < Test::Unit::TestCase
     assert_equal(2, search_result[1].length)
     assert_true(search_result[1].include?("hello"))
     assert_true(search_result[1].include?("hi"))
-    assert_equal(Status::SUCCESS, async.clear().get)
+    assert_equal(Status::SUCCESS, async.clear.get)
     assert_equal(Status::SUCCESS, async.set("aa", "AAA").get)
     assert_equal(Status::SUCCESS, async.rekey("aa", "bb").get)
     get_result = async.get("bb").get
     assert_equal(Status::SUCCESS, get_result[0])
     assert_equal("AAA", get_result[1])
-    pop_result = async.pop_first().get
+    pop_result = async.pop_first.get
     assert_equal(Status::SUCCESS, pop_result[0])
     assert_equal("bb", pop_result[1])
     assert_equal("AAA", pop_result[2])
-    pop_result = async.pop_first().get
+    pop_result = async.pop_first.get
     assert_equal(Status::NOT_FOUND_ERROR, pop_result[0])
     assert_equal("", pop_result[1])
     assert_equal("", pop_result[2])
+    assert_equal(Status::SUCCESS, async.push_last("foo", 0).get)
+    pop_result = async.pop_first.get
+    assert_equal(Status::SUCCESS, pop_result[0])
+    assert_equal("\0\0\0\0\0\0\0\0", pop_result[1])
+    assert_equal("foo", pop_result[2])
     async.destruct
     assert_equal(Status::SUCCESS, dbm.close)
   end

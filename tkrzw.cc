@@ -1310,6 +1310,25 @@ static VALUE dbm_pop_first(int argc, VALUE* argv, VALUE vself) {
   return Qnil;
 }
 
+// Implementation of DBM#push_last.
+static VALUE dbm_push_last(int argc, VALUE* argv, VALUE vself) {
+  StructDBM* sdbm = nullptr;
+  Data_Get_Struct(vself, StructDBM, sdbm);
+  if (sdbm->dbm == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened database");
+  }
+  volatile VALUE vvalue, vwtime;
+  rb_scan_args(argc, argv, "11", &vvalue, &vwtime);
+  vvalue = StringValueEx(vvalue);
+  const std::string_view value = GetStringView(vvalue);
+  const double wtime = vwtime == Qnil ? -1.0 : GetFloat(vwtime);
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sdbm->concurrent, [&]() {
+      status = sdbm->dbm->PushLast(value, wtime);
+    });
+  return MakeStatusValue(std::move(status));
+}
+
 // Implementation of DBM#count.
 static VALUE dbm_count(VALUE vself) {
   StructDBM* sdbm = nullptr;
@@ -1866,6 +1885,7 @@ static void DefineDBM() {
   rb_define_method(cls_dbm, "compare_exchange_multi", (METHOD)dbm_compare_exchange_multi, 2);
   rb_define_method(cls_dbm, "rekey", (METHOD)dbm_rekey, -1);
   rb_define_method(cls_dbm, "pop_first", (METHOD)dbm_pop_first, -1);
+  rb_define_method(cls_dbm, "push_last", (METHOD)dbm_push_last, -1);
   rb_define_method(cls_dbm, "count", (METHOD)dbm_count, 0);
   rb_define_method(cls_dbm, "file_size", (METHOD)dbm_file_size, 0);
   rb_define_method(cls_dbm, "file_path", (METHOD)dbm_file_path, 0);
@@ -2538,6 +2558,22 @@ static VALUE asyncdbm_pop_first(VALUE vself) {
   return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
 }
 
+// Implementation of AsyncDBM#push_last.
+static VALUE asyncdbm_push_last(int argc, VALUE* argv, VALUE vself) {
+  StructAsyncDBM* sasync = nullptr;
+  Data_Get_Struct(vself, StructAsyncDBM, sasync);
+  if (sasync->async == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed object");
+  }
+  volatile VALUE vvalue, vwtime;
+  rb_scan_args(argc, argv, "11", &vvalue, &vwtime);
+  vvalue = StringValueEx(vvalue);
+  const std::string_view value = GetStringView(vvalue);
+  const double wtime = vwtime == Qnil ? -1.0 : GetFloat(vwtime);
+  tkrzw::StatusFuture future(sasync->async->PushLast(value, wtime));
+  return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);
+}
+
 // Implementation of AsyncDBM#clear.
 static VALUE asyncdbm_clear(VALUE vself) {
   StructAsyncDBM* sasync = nullptr;
@@ -2683,6 +2719,7 @@ static void DefineAsyncDBM() {
                    (METHOD)asyncdbm_compare_exchange_multi, 2);
   rb_define_method(cls_asyncdbm, "rekey", (METHOD)asyncdbm_rekey, -1);
   rb_define_method(cls_asyncdbm, "pop_first", (METHOD)asyncdbm_pop_first, 0);
+  rb_define_method(cls_asyncdbm, "push_last", (METHOD)asyncdbm_push_last, -1);
   rb_define_method(cls_asyncdbm, "clear", (METHOD)asyncdbm_clear, 0);
   rb_define_method(cls_asyncdbm, "rebuild", (METHOD)asyncdbm_rebuild, -1);
   rb_define_method(cls_asyncdbm, "synchronize", (METHOD)asyncdbm_synchronize, -1);

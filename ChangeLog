@@ -2,8 +2,9 @@
 
 	- Release: 0.1.25
 
-	- Add DBM::Rekey.
-	- Add Iterator::Step and Iterator::PopFirst.
+	- Add DBM::rekey.
+	- Add Iterator::step.
+	- Add DBM::pop_first and DBM::push_last.
 	- Compatibility to the C++ library: Tkrzw 1.0.18
 
 2021-10-10  Mikio Hirabayashi  <hirarin@gmail.com>

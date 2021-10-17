@@ -468,6 +468,15 @@ module Tkrzw
       # (native code)
     end
 
+    # Adds a record with a key of the current timestamp.
+    # @param value The value of the record.
+    # @param wtime The current wall time used to generate the key.  If it is nil, the system clock is used.
+    # @return The result status.
+    # The key is generated as an 8-bite big-endian binary string of the timestamp.  If there is an existing record matching the generated key, the key is regenerated and the attempt is repeated until it succeeds.
+    def push_last(value, wtime=nil):
+      # (native code)
+    end
+
     # Gets the number of records.
     # @return The number of records on success, or nil on failure.
     def count()
@@ -918,6 +927,15 @@ module Tkrzw
     # Gets the first record and removes it.
     # @return An array of the result status, the key, and the value of the first record.
     def pop_first(status=nil)
+      # (native code)
+    end
+
+    # Adds a record with a key of the current timestamp.
+    # @param value The value of the record.
+    # @param wtime The current wall time used to generate the key.  If it is nil, the system clock is used.
+    # @return The future for the result status.
+    # The key is generated as an 8-bite big-endian binary string of the timestamp.  If there is an existing record matching the generated key, the key is regenerated and the attempt is repeated until it succeeds.
+    def push_last(value, wtime=nil)
       # (native code)
     end
 
