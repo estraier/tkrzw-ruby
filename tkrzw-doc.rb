@@ -73,7 +73,7 @@ module Tkrzw
     # @param b The other string.
     # @param utf If true, strings are treated as UTF-8 and the edit distance is by the Unicode character.
     # @return The Levenshtein edit distance of the two strings.
-    def self.edit_distance_lev(a, b, utf=false):
+    def self.edit_distance_lev(a, b, utf=false)
       # (native code)
     end
   end
@@ -473,7 +473,7 @@ module Tkrzw
     # @param wtime The current wall time used to generate the key.  If it is nil, the system clock is used.
     # @return The result status.
     # The key is generated as an 8-bite big-endian binary string of the timestamp.  If there is an existing record matching the generated key, the key is regenerated and the attempt is repeated until it succeeds.
-    def push_last(value, wtime=nil):
+    def push_last(value, wtime=nil)
       # (native code)
     end
 
