@@ -509,7 +509,8 @@ class TkrzwTest < Test::Unit::TestCase
               assert_equal(2, record.size)
               assert_equal(key, record[0])
               assert_equal(value, record[1])
-              iter.next.or_die
+              status = iter.next
+              assert_true(status == Status::SUCCESS || status == Status::NOT_FOUND_ERROR)
             end
             iter.destruct
           elsif rnd_state.rand(4) == 0
