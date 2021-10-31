@@ -43,22 +43,23 @@ extern "C" {
 typedef VALUE (*METHOD)(...);
 
 // Global variables.
-VALUE mod_tkrzw;
+volatile VALUE mod_tkrzw;
 ID id_obj_to_str;
 ID id_obj_to_s;
 ID id_obj_to_i;
 ID id_obj_to_f;
 ID id_str_force_encoding;
 
-VALUE cls_util;
-VALUE cls_status;
-VALUE cls_future;
-VALUE cls_expt;
+volatile VALUE cls_util;
+volatile VALUE cls_status;
+volatile VALUE cls_future;
+volatile VALUE cls_expt;
 ID id_expt_status;
-VALUE cls_dbm;
-VALUE cls_iter;
-VALUE cls_asyncdbm;
-VALUE cls_file;
+volatile VALUE cls_dbm;
+volatile VALUE cls_iter;
+volatile VALUE cls_asyncdbm;
+volatile VALUE cls_file;
+volatile VALUE obj_dbm_any_data;
 
 // Generates a string expression of an arbitrary object.
 static VALUE StringValueEx(VALUE vobj) {
@@ -192,8 +193,12 @@ static std::vector<std::pair<std::string_view, std::string_view>> ExtractSVPairs
       std::string_view key_view(RSTRING_PTR(vkey), RSTRING_LEN(vkey));
       std::string_view value_view;
       if (vvalue != Qnil) {
-        vvalue = StringValueEx(vvalue);
-        value_view = std::string_view(RSTRING_PTR(vvalue), RSTRING_LEN(vvalue));
+        if (vvalue == obj_dbm_any_data) {
+          value_view = tkrzw::DBM::ANY_DATA;
+        } else {
+          vvalue = StringValueEx(vvalue);
+          value_view = std::string_view(RSTRING_PTR(vvalue), RSTRING_LEN(vvalue));
+        }
       }
       result.emplace_back(std::make_pair(key_view, value_view));
     }
@@ -1191,7 +1196,22 @@ static VALUE dbm_append_multi(int argc, VALUE* argv, VALUE vself) {
 }
 
 // Implementation of DBM#compare_exchange.
+
+static void* last_ptr = nullptr;
+
+
 static VALUE dbm_compare_exchange(VALUE vself, VALUE vkey, VALUE vexpected, VALUE vdesired) {
+
+  if (last_ptr == nullptr) {
+    last_ptr = (void*)obj_dbm_any_data;
+  } else {
+    if (last_ptr != (void*)obj_dbm_any_data) {
+      std::cout << "YABASU:" << last_ptr << ":" << (void*)obj_dbm_any_data << std::endl;
+      abort();
+    }
+  }
+
+  
   StructDBM* sdbm = nullptr;
   Data_Get_Struct(vself, StructDBM, sdbm);
   if (sdbm->dbm == nullptr) {
@@ -1201,13 +1221,21 @@ static VALUE dbm_compare_exchange(VALUE vself, VALUE vkey, VALUE vexpected, VALU
   const std::string_view key = GetStringView(vkey);
   std::string_view expected;
   if (vexpected != Qnil) {
-    vexpected = StringValueEx(vexpected);
-    expected = GetStringView(vexpected);
+    if (vexpected == obj_dbm_any_data) {
+      expected = tkrzw::DBM::ANY_DATA;
+    } else {
+      vexpected = StringValueEx(vexpected);
+      expected = GetStringView(vexpected);
+    }
   }
   std::string_view desired;
   if (vdesired != Qnil) {
-    vdesired = StringValueEx(vdesired);
-    desired = GetStringView(vdesired);
+    if (vdesired == obj_dbm_any_data) {
+      desired = tkrzw::DBM::ANY_DATA;
+    } else {
+      vdesired = StringValueEx(vdesired);
+      desired = GetStringView(vdesired);
+    }
   }
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(sdbm->concurrent, [&]() {
@@ -1866,6 +1894,8 @@ static VALUE dbm_each(VALUE vself) {
 static void DefineDBM() {
   cls_dbm = rb_define_class_under(mod_tkrzw, "DBM", rb_cObject);
   rb_define_alloc_func(cls_dbm, dbm_new);
+  obj_dbm_any_data = INT2FIX((std::numeric_limits<int>::max() >> 1) - 1);
+  rb_define_const(cls_dbm, "ANY_DATA", obj_dbm_any_data);
   rb_define_private_method(cls_dbm, "initialize", (METHOD)dbm_initialize, 0);
   rb_define_method(cls_dbm, "destruct", (METHOD)dbm_destruct, 0);
   rb_define_method(cls_dbm, "open", (METHOD)dbm_open, -1);
@@ -2483,13 +2513,21 @@ static VALUE asyncdbm_compare_exchange(VALUE vself, VALUE vkey, VALUE vexpected,
   const std::string_view key = GetStringView(vkey);
   std::string_view expected;
   if (vexpected != Qnil) {
-    vexpected = StringValueEx(vexpected);
-    expected = GetStringView(vexpected);
+    if (vexpected == obj_dbm_any_data) {
+      expected = tkrzw::DBM::ANY_DATA;
+    } else {
+      vexpected = StringValueEx(vexpected);
+      expected = GetStringView(vexpected);
+    }
   }
   std::string_view desired;
   if (vdesired != Qnil) {
-    vdesired = StringValueEx(vdesired);
-    desired = GetStringView(vdesired);
+    if (vdesired == obj_dbm_any_data) {
+      desired = tkrzw::DBM::ANY_DATA;
+    } else {
+      vdesired = StringValueEx(vdesired);
+      desired = GetStringView(vdesired);
+    }
   }
   tkrzw::StatusFuture future(sasync->async->CompareExchange(key, expected, desired));
   return MakeFutureValue(std::move(future), sasync->concurrent, sasync->venc);

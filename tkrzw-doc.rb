@@ -258,6 +258,9 @@ module Tkrzw
   # Polymorphic database manager.
   # All operations except for "open" and "close" are thread-safe; Multiple threads can access the same database concurrently.  You can specify a data structure when you call the "open" method.  Every opened database must be closed explicitly by the "close" method to avoid data corruption.  Moreover, every unused database object should be destructed by the "destruct" method to free resources.
   class DBM
+    # The special bytes value for no-operation or any data.
+    ANY_DATA = "\x00[ANY]\x00"
+    
     # Does nothing especially.
     def initialize()
       # (native code)
@@ -424,8 +427,8 @@ module Tkrzw
 
     # Compares the value of a record and exchanges if the condition meets.
     # @param key The key of the record.
-    # @param expected The expected value.  If it is nil, no existing record is expected.
-    # @param desired The desired value.  If it is nil, the record is to be removed.
+    # @param expected The expected value.  If it is nil, no existing record is expected.  If it is ANY_DATA, an existing record with any value is expacted.
+    # @param desired The desired value.  If it is nil, the record is to be removed.  If it is ANY_DATA, no update is done.
     # @return The result status.  If the condition doesn't meet, INFEASIBLE_ERROR is returned.
     def compare_exchange(key, expected, desired)
       # (native code)
@@ -443,7 +446,7 @@ module Tkrzw
     end
 
     # Compares the values of records and exchanges if the condition meets.
-    # @param expected An array of pairs of the record keys and their expected values.  If the value is nil, no existing record is expected.
+    # @param expected An array of pairs of the record keys and their expected values.  If the value is nil, no existing record is expected.  If the value is ANY_DATA, an existing record with any value is expacted.
     # @param desired An array of pairs of the record keys and their desired values.  If the value is nil, the record is to be removed.
     # @return The result status.  If the condition doesn't meet, INFEASIBLE_ERROR is returned.
     def compare_exchange_multi(expected, desired)
@@ -888,8 +891,8 @@ module Tkrzw
 
     # Compares the value of a record and exchanges if the condition meets.
     # @param key The key of the record.
-    # @param expected The expected value.  If it is nil, no existing record is expected.
-    # @param desired The desired value.  If it is nil, the record is to be removed.
+    # @param expected The expected value.  If it is nil, no existing record is expected.  If it is DBM::ANY_DATA, an existing record with any value is expacted.
+    # @param desired The desired value.  If it is nil, the record is to be removed.  If it is DBM::ANY_DATA, no update is done.
     # @return The future for the result status.  If the condition doesn't meet, INFEASIBLE_ERROR is set.
     def compare_exchange(key, expected, desired)
       # (native code)
@@ -906,7 +909,7 @@ module Tkrzw
     end
 
     # Compares the values of records and exchanges if the condition meets.
-    # @param expected An array of pairs of the record keys and their expected values.  If the value is nil, no existing record is expected.
+    # @param expected An array of pairs of the record keys and their expected values.  If the value is nil, no existing record is expected.  If the value is DBM::ANY_DATA, an existing record with any value is expacted.
     # @param desired An array of pairs of the record keys and their desired values.  If the value is nil, the record is to be removed.
     # @return The future for the result status.  If the condition doesn't meet, INFEASIBLE_ERROR is set.
     def compare_exchange_multi(expected, desired)
