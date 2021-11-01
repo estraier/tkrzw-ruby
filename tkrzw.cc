@@ -1196,22 +1196,7 @@ static VALUE dbm_append_multi(int argc, VALUE* argv, VALUE vself) {
 }
 
 // Implementation of DBM#compare_exchange.
-
-static void* last_ptr = nullptr;
-
-
 static VALUE dbm_compare_exchange(VALUE vself, VALUE vkey, VALUE vexpected, VALUE vdesired) {
-
-  if (last_ptr == nullptr) {
-    last_ptr = (void*)obj_dbm_any_data;
-  } else {
-    if (last_ptr != (void*)obj_dbm_any_data) {
-      std::cout << "YABASU:" << last_ptr << ":" << (void*)obj_dbm_any_data << std::endl;
-      abort();
-    }
-  }
-
-  
   StructDBM* sdbm = nullptr;
   Data_Get_Struct(vself, StructDBM, sdbm);
   if (sdbm->dbm == nullptr) {
@@ -1242,6 +1227,50 @@ static VALUE dbm_compare_exchange(VALUE vself, VALUE vkey, VALUE vexpected, VALU
       status = sdbm->dbm->CompareExchange(key, expected, desired);
     });
   return MakeStatusValue(std::move(status));
+}
+
+// Implementation of DBM#compare_exchange_and_get.
+static VALUE dbm_compare_exchange_and_get(
+    VALUE vself, VALUE vkey, VALUE vexpected, VALUE vdesired) {
+  StructDBM* sdbm = nullptr;
+  Data_Get_Struct(vself, StructDBM, sdbm);
+  if (sdbm->dbm == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened database");
+  }
+  vkey = StringValueEx(vkey);
+  const std::string_view key = GetStringView(vkey);
+  std::string_view expected;
+  if (vexpected != Qnil) {
+    if (vexpected == obj_dbm_any_data) {
+      expected = tkrzw::DBM::ANY_DATA;
+    } else {
+      vexpected = StringValueEx(vexpected);
+      expected = GetStringView(vexpected);
+    }
+  }
+  std::string_view desired;
+  if (vdesired != Qnil) {
+    if (vdesired == obj_dbm_any_data) {
+      desired = tkrzw::DBM::ANY_DATA;
+    } else {
+      vdesired = StringValueEx(vdesired);
+      desired = GetStringView(vdesired);
+    }
+  }
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  std::string actual;
+  bool found = false;
+  NativeFunction(sdbm->concurrent, [&]() {
+      status = sdbm->dbm->CompareExchange(key, expected, desired, &actual, &found);
+    });
+  volatile VALUE vpair = rb_ary_new2(2);
+  rb_ary_push(vpair, MakeStatusValue(std::move(status)));
+  if (found) {
+    rb_ary_push(vpair, MakeString(actual, sdbm->venc));
+  } else {
+    rb_ary_push(vpair, Qnil);
+  }
+  return vpair;
 }
 
 // Implementation of DBM#increment.
@@ -1911,6 +1940,7 @@ static void DefineDBM() {
   rb_define_method(cls_dbm, "append", (METHOD)dbm_append, -1);
   rb_define_method(cls_dbm, "append_multi", (METHOD)dbm_append_multi, -1);
   rb_define_method(cls_dbm, "compare_exchange", (METHOD)dbm_compare_exchange, 3);
+  rb_define_method(cls_dbm, "compare_exchange_and_get", (METHOD)dbm_compare_exchange_and_get, 3);
   rb_define_method(cls_dbm, "increment", (METHOD)dbm_increment, -1);
   rb_define_method(cls_dbm, "compare_exchange_multi", (METHOD)dbm_compare_exchange_multi, 2);
   rb_define_method(cls_dbm, "rekey", (METHOD)dbm_rekey, -1);

@@ -434,6 +434,15 @@ module Tkrzw
       # (native code)
     end
 
+    # Does compare-and-exchange and/or gets the old value of the record.
+    # @param key The key of the record.
+    # @param expected The expected value.  If it is nil, no existing record is expected.  If it is ANY_DATA, an existing record with any value is expacted.
+    # @param desired The desired value.  If it is nil, the record is to be removed.  If it is ANY_DATA, no update is done.
+    # @return A pair of the result status and the.old value of the record.  If the condition doesn't meet, the state is INFEASIBLE_ERROR.  If there's no existing record, the value is nil.
+    def compare_exchange_and_get(key, expected, desired)
+      # (native code)
+    end
+
     # Increments the numeric value of a record.
     # @param key The key of the record.
     # @param inc The incremental value.  If it is Utility::INT64MIN, the current value is not changed and a new record is not created.

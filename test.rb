@@ -345,6 +345,15 @@ class TkrzwTest < Test::Unit::TestCase
       assert_equal(Status::SUCCESS, export_dbm.compare_exchange(
                      "xyz", DBM::ANY_DATA, nil))
       assert_equal(nil, export_dbm.get("xyz", status))
+      status, value = export_dbm.compare_exchange_and_get("xyz", nil, "123")
+      assert_equal(Status::SUCCESS, status)
+      assert_equal(nil, value)
+      status, value = export_dbm.compare_exchange_and_get("xyz", DBM::ANY_DATA, DBM::ANY_DATA)
+      assert_equal(Status::SUCCESS, status)
+      assert_equal("123", value)
+      status, value = export_dbm.compare_exchange_and_get("xyz", DBM::ANY_DATA, nil)
+      assert_equal(Status::SUCCESS, status)
+      assert_equal("123", value)
       assert_equal(Status::INFEASIBLE_ERROR, export_dbm.compare_exchange_multi(
                      [["hop", "one"], ["step", nil]],
                      [["hop", "uno"], ["step", "dos"]]))
