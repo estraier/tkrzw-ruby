@@ -28,7 +28,7 @@ tklibs = tklibs.gsub(/-L[\S]+/, "").strip
 
 tkcflags = "-I/usr/local/include" if tkcflags.length < 1
 tkldflags = "-L/usr/local/lib" if tkldflags.length < 1
-tklibs = "-ltkrzw -lstdc++ -lrt -lpthread -lm -lc" if tklibs.length < 1
+tklibs = "-ltkrzw -lstdc++ -lrt -latomic -lpthread -lm -lc" if tklibs.length < 1
 
 RbConfig::CONFIG["CPP"] = "g++ -std=c++17 -E"
 $CFLAGS = "-std=c++17 -Wno-register -I. #{tkcflags} -Wall #{$CFLAGS} -O2"
