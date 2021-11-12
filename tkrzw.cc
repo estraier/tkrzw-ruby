@@ -895,6 +895,7 @@ static VALUE dbm_close(VALUE vself) {
   NativeFunction(sdbm->concurrent, [&]() {
       status = sdbm->dbm->Close();
     });
+  sdbm->dbm.reset(nullptr);
   return MakeStatusValue(std::move(status));
 }
 
