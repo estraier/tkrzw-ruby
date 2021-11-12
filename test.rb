@@ -449,6 +449,10 @@ class TkrzwTest < Test::Unit::TestCase
       assert_equal(Status::SUCCESS, export_dbm.close)
       export_dbm.destruct
       assert_equal(Status::SUCCESS, dbm.close)
+      if not path.empty?
+        assert_equal(Status::SUCCESS, dbm.open(path, false, open_params))
+        assert_equal(Status::SUCCESS, dbm.close)
+      end
       dbm.destruct
     end      
   end
