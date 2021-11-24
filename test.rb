@@ -390,8 +390,10 @@ class TkrzwTest < Test::Unit::TestCase
       assert_equal("bar,bazqux", export_dbm.get("foo"))
       export_dbm["abc"] = "defg"
       assert_equal("defg", export_dbm["abc"])
+      assert_true(export_dbm.include?("abc"))
       assert_equal("defg", export_dbm.delete("abc"))
       assert_equal(nil, export_dbm["abc"])
+      assert_false(export_dbm.include?("abc"))
       assert_equal(Status::SUCCESS,
                    export_dbm.set_multi(true, one: "first", two: "second", three: "third"))
       assert_equal(Status::SUCCESS, export_dbm.append_multi(":", one: "1", two: "2"))

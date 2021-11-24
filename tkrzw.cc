@@ -899,6 +899,22 @@ static VALUE dbm_close(VALUE vself) {
   return MakeStatusValue(std::move(status));
 }
 
+// Implementation of DBM#include?.
+static VALUE dbm_include(VALUE vself, VALUE vkey) {
+  StructDBM* sdbm = nullptr;
+  Data_Get_Struct(vself, StructDBM, sdbm);
+  if (sdbm->dbm == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened database");
+  }
+  vkey = StringValueEx(vkey);
+  const std::string_view key = GetStringView(vkey);
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sdbm->concurrent, [&]() {
+      status = sdbm->dbm->Get(key);
+    });
+  return status == tkrzw::Status::SUCCESS ? Qtrue : Qfalse;
+}
+
 // Implementation of DBM#get.
 static VALUE dbm_get(int argc, VALUE* argv, VALUE vself) {
   StructDBM* sdbm = nullptr;
@@ -1930,6 +1946,7 @@ static void DefineDBM() {
   rb_define_method(cls_dbm, "destruct", (METHOD)dbm_destruct, 0);
   rb_define_method(cls_dbm, "open", (METHOD)dbm_open, -1);
   rb_define_method(cls_dbm, "close", (METHOD)dbm_close, 0);
+  rb_define_method(cls_dbm, "include?", (METHOD)dbm_include, 1);
   rb_define_method(cls_dbm, "get", (METHOD)dbm_get, -1);
   rb_define_method(cls_dbm, "get_multi", (METHOD)dbm_get_multi, -2);
   rb_define_method(cls_dbm, "set", (METHOD)dbm_set, -1);
