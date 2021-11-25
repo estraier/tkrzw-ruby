@@ -345,7 +345,7 @@ module Tkrzw
       # (native code)
     end
 
-    #Checks if a record exists or not.
+    # Checks if a record exists or not.
     # @param key The key of the record.
     # @return True if the record exists, or false if not.
     def include?(key)
