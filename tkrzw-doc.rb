@@ -345,7 +345,8 @@ module Tkrzw
     def close()
       # (native code)
     end
-    # Processes a record with an arbitrary function.
+
+    # Processes a record with an arbitrary block.
     # @param key The key of the record.
     # @param writable True if the processor can edit the record.
     # @block The block to process a record.  The first parameter is the key of the record.  The second parameter is the value of the existing record, or nil if it the record doesn't exist.  The return value is a string or bytes to update the record value.  If the return value is nil, the record is not modified.  If the return value is false (not a false value but the false object), the record is removed.
@@ -471,6 +472,15 @@ module Tkrzw
       # (native code)
     end
 
+    # Processes multiple records with an arbitrary block.
+    # @param keys A list of record keys.
+    # @block The block to process a record.  The first parameter is the key of the record.  The second parameter is the value of the existing record, or nil if it the record doesn't exist.  The return value is a string or bytes to update the record value.  If the return value is nil, the record is not modified.  If the return value is false (not a false value but the false object), the record is removed.
+    # @return The result status.
+    # This method is not available in the concurrent mode because the function cannot be invoked outside the GIL.
+    def process_multi(keys, writable)
+      # (native code)
+    end
+
     # Compares the values of records and exchanges if the condition meets.
     # @param expected An array of pairs of the record keys and their expected values.  If the value is nil, no existing record is expected.  If the value is ANY_DATA, an existing record with any value is expacted.
     # @param desired An array of pairs of the record keys and their desired values.  If the value is nil, the record is to be removed.
@@ -506,7 +516,7 @@ module Tkrzw
       # (native code)
     end
 
-    # Processes each and every record in the database with an arbitrary function.
+    # Processes each and every record in the database with an arbitrary block.
     # @block The block to process a record.  The first parameter is the key of the record.  The second parameter is the value of the existing record, or nil if it the record doesn't exist.  The return value is a string or bytes to update the record value.  If the return value is nil, the record is not modified.  If the return value is false (not a false value but the false object), the record is removed.
     # @param writable True if the processor can edit the record.
     # @return The result status.

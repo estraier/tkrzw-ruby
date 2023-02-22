@@ -49,7 +49,6 @@ ID id_obj_to_s;
 ID id_obj_to_i;
 ID id_obj_to_f;
 ID id_str_force_encoding;
-ID id_proc_process;
 
 volatile VALUE cls_util;
 volatile VALUE cls_status;
@@ -220,7 +219,6 @@ static void DefineModule() {
   id_obj_to_i = rb_intern("to_i");
   id_obj_to_f = rb_intern("to_f");
   id_str_force_encoding = rb_intern("force_encoding");
-  id_proc_process = rb_intern("process");
 }
 
 // Makes a string object in the internal encoding of the database.
@@ -1371,6 +1369,68 @@ static VALUE dbm_increment(int argc, VALUE* argv, VALUE vself) {
   return Qnil;
 }
 
+// Implementation of DBM#process_multi.
+static VALUE dbm_process_multi(VALUE vself, VALUE vkeys, VALUE vwritable) {
+  StructDBM* sdbm = nullptr;
+  Data_Get_Struct(vself, StructDBM, sdbm);
+  if (sdbm->dbm == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened database");
+  }
+  if (sdbm->concurrent) {
+    rb_raise(rb_eRuntimeError, "the concurrent mode is not supported");
+  }
+  rb_need_block();
+  if (TYPE(vkeys) != T_ARRAY) {
+    rb_raise(rb_eRuntimeError, "keys is not an array");
+  }
+  std::vector<std::string> keys;
+  const int32_t num_keys = RARRAY_LEN(vkeys);
+  for (int32_t i = 0; i < num_keys; i++) {
+    volatile VALUE vkey = rb_ary_entry(vkeys, i);
+    vkey = StringValueEx(vkey);
+    keys.emplace_back(std::string(RSTRING_PTR(vkey), RSTRING_LEN(vkey)));
+  }
+  const bool writable = RTEST(vwritable);
+  std::vector<std::string> rvph;
+  rvph.reserve(keys.size());
+  bool block_error = false;
+  auto func = [&](std::string_view reckey, std::string_view recvalue) -> std::string_view {
+    if (block_error) {
+      return tkrzw::DBM::RecordProcessor::NOOP;
+    }
+    volatile VALUE vreckey = MakeString(reckey, sdbm->venc);
+    volatile VALUE vrecvalue = recvalue.data() == tkrzw::DBM::RecordProcessor::NOOP.data() ?
+        Qnil : MakeString(recvalue, sdbm->venc);
+    volatile VALUE vargs = rb_ary_new3(2, vreckey, vrecvalue);
+    int state = 0;
+    volatile VALUE vrv = rb_protect(call_ruby_block, vargs, &state);
+    std::string_view rv;
+    if (state) {
+      block_error = true;
+      rv = tkrzw::DBM::RecordProcessor::NOOP;
+    } else if (vrv == Qnil) {
+      rv = tkrzw::DBM::RecordProcessor::NOOP;
+    } else if (vrv == Qfalse) {
+      rv = tkrzw::DBM::RecordProcessor::REMOVE;
+    } else {
+      vrv = StringValueEx(vrv);
+      rvph.emplace_back(std::string(GetStringView(vrv)));
+      rv = rvph.back();
+    }
+    return rv;
+  };
+  std::vector<std::pair<std::string_view, tkrzw::DBM::RecordLambdaType>> kfpairs;
+  kfpairs.reserve(keys.size());
+  for (const auto& key : keys) {
+    kfpairs.emplace_back(std::make_pair(std::string_view(key), func));
+  }
+  tkrzw::Status status = sdbm->dbm->ProcessMulti(kfpairs, writable);
+  if (block_error && status.IsOK()) {
+    status.Set(tkrzw::Status::UNKNOWN_ERROR, "exception from the block code");
+  }
+  return MakeStatusValue(std::move(status));
+}
+
 // Implementation of DBM#compare_exchange_multi.
 static VALUE dbm_compare_exchange_multi(VALUE vself, VALUE vexpected, VALUE vdesired) {
   StructDBM* sdbm = nullptr;
@@ -1472,6 +1532,9 @@ static VALUE dbm_process_each(VALUE vself, VALUE vwritable) {
   std::string rvph;
   bool block_error = false;
   auto func = [&](std::string_view reckey, std::string_view recvalue) -> std::string_view {
+    if (block_error) {
+      return tkrzw::DBM::RecordProcessor::NOOP;
+    }
     volatile VALUE vreckey = reckey.data() == tkrzw::DBM::RecordProcessor::NOOP.data() ?
         Qnil : MakeString(reckey, sdbm->venc);
     volatile VALUE vrecvalue = recvalue.data() == tkrzw::DBM::RecordProcessor::NOOP.data() ?
@@ -2059,6 +2122,7 @@ static void DefineDBM() {
   rb_define_method(cls_dbm, "compare_exchange", (METHOD)dbm_compare_exchange, 3);
   rb_define_method(cls_dbm, "compare_exchange_and_get", (METHOD)dbm_compare_exchange_and_get, 3);
   rb_define_method(cls_dbm, "increment", (METHOD)dbm_increment, -1);
+  rb_define_method(cls_dbm, "process_multi", (METHOD)dbm_process_multi, 2);
   rb_define_method(cls_dbm, "compare_exchange_multi", (METHOD)dbm_compare_exchange_multi, 2);
   rb_define_method(cls_dbm, "rekey", (METHOD)dbm_rekey, -1);
   rb_define_method(cls_dbm, "pop_first", (METHOD)dbm_pop_first, -1);

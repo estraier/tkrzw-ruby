@@ -508,6 +508,20 @@ class TkrzwTest < Test::Unit::TestCase
                    false
                  })
     assert_equal(0, dbm.count)
+    records = {"one"=>"hop", "two"=>"step", "three"=>"jump"}
+    assert_equal(Status::SUCCESS, dbm.process_multi(["one", "two", "three"], true) {|k, v|
+                   records[k]
+                 })
+    records = {"one"=>false, "two"=>false, "three"=>"jumpjump", "four"=>"xx"}
+    assert_equal(Status::SUCCESS, dbm.process_multi(
+                   ["one", "two", "three", "four", "four"], true) {|k, v|
+                   records[k]
+                 })
+    assert_equal(2, dbm.count)
+    assert_equal(nil, dbm.get("one"))
+    assert_equal(nil, dbm.get("two"))
+    assert_equal("jumpjump", dbm.get("three"))
+    assert_equal("xx", dbm.get("four"))
     assert_equal(Status::SUCCESS, dbm.close)
   end
 
