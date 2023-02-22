@@ -49,6 +49,7 @@ ID id_obj_to_s;
 ID id_obj_to_i;
 ID id_obj_to_f;
 ID id_str_force_encoding;
+ID id_proc_process;
 
 volatile VALUE cls_util;
 volatile VALUE cls_status;
@@ -214,6 +215,7 @@ static void DefineModule() {
   id_obj_to_i = rb_intern("to_i");
   id_obj_to_f = rb_intern("to_f");
   id_str_force_encoding = rb_intern("force_encoding");
+  id_proc_process = rb_intern("process");
 }
 
 // Makes a string object in the internal encoding of the database.
@@ -896,6 +898,58 @@ static VALUE dbm_close(VALUE vself) {
       status = sdbm->dbm->Close();
     });
   sdbm->dbm.reset(nullptr);
+  return MakeStatusValue(std::move(status));
+}
+
+// Calls a ruby function with any exception
+static VALUE call_ruby_block(VALUE args) {
+  return rb_yield_values(2, rb_ary_entry(args, 0), rb_ary_entry(args, 1));
+}
+
+// Implementation of DBM#process.
+static VALUE dbm_process(int argc, VALUE* argv, VALUE vself) {
+  StructDBM* sdbm = nullptr;
+  Data_Get_Struct(vself, StructDBM, sdbm);
+  if (sdbm->dbm == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened database");
+  }
+  if (sdbm->concurrent) {
+    rb_raise(rb_eRuntimeError, "the concurrent mode is not supported");
+  }
+  rb_need_block();
+  volatile VALUE vkey, vwritable;
+  rb_scan_args(argc, argv, "20", &vkey, &vwritable);
+  vkey = StringValueEx(vkey);
+  const std::string_view key = GetStringView(vkey);
+  const bool writable = RTEST(vwritable);
+  std::string rvph;
+  bool block_error = false;
+  auto func = [&](std::string_view reckey, std::string_view recvalue) -> std::string_view {
+    volatile VALUE vreckey = MakeString(reckey, sdbm->venc);
+    volatile VALUE vrecvalue = recvalue.data() == tkrzw::DBM::RecordProcessor::NOOP.data() ?
+        Qnil : MakeString(recvalue, sdbm->venc);
+    volatile VALUE vargs = rb_ary_new3(2, vreckey, vrecvalue);
+    int state = 0;
+    volatile VALUE vrv = rb_protect(call_ruby_block, vargs, &state);
+    std::string_view rv;
+    if (state) {
+      block_error = true;
+      rv = tkrzw::DBM::RecordProcessor::NOOP;
+    } else if (vrv == Qnil) {
+      rv = tkrzw::DBM::RecordProcessor::NOOP;
+    } else if (vrv == Qfalse) {
+      rv = tkrzw::DBM::RecordProcessor::REMOVE;
+    } else {
+      vrv = StringValueEx(vrv);
+      rvph = GetStringView(vrv);
+      rv = rvph;
+    }
+    return rv;
+  };
+  tkrzw::Status status = sdbm->dbm->Process(key, func, writable);
+  if (block_error && status.IsOK()) {
+    status.Set(tkrzw::Status::UNKNOWN_ERROR, "exception from the block code");
+  }
   return MakeStatusValue(std::move(status));
 }
 
@@ -1947,6 +2001,7 @@ static void DefineDBM() {
   rb_define_method(cls_dbm, "open", (METHOD)dbm_open, -1);
   rb_define_method(cls_dbm, "close", (METHOD)dbm_close, 0);
   rb_define_method(cls_dbm, "include?", (METHOD)dbm_include, 1);
+  rb_define_method(cls_dbm, "process", (METHOD)dbm_process, -1);
   rb_define_method(cls_dbm, "get", (METHOD)dbm_get, -1);
   rb_define_method(cls_dbm, "get_multi", (METHOD)dbm_get_multi, -2);
   rb_define_method(cls_dbm, "set", (METHOD)dbm_set, -1);

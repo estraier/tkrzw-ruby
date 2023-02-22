@@ -345,6 +345,15 @@ module Tkrzw
     def close()
       # (native code)
     end
+    # Processes a record with an arbitrary function.
+    # @param key The key of the record.
+    # @param writable True if the processor can edit the record.
+    # @block The block to process a record.  The first parameter is the key of the record.  The second parameter is the value of the existing record, or None if it the record doesn't exist.  The return value is a string or bytes to update the record value.  If the return value is None, the record is not modified.  If the return value is False (not a false value but the False object), the record is removed.
+    # @return The result status.
+    # This method is not available in the concurrent mode because the function cannot be invoked outside the GIL.
+    def process(key, writable)
+      # (native code)
+    end
 
     # Checks if a record exists or not.
     # @param key The key of the record.

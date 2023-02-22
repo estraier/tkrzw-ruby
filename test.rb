@@ -459,6 +459,36 @@ class TkrzwTest < Test::Unit::TestCase
     end      
   end
 
+  # Basic process-related functions.
+  def test_process
+    path = _make_tmp_path("casket.tkh")
+    dbm = DBM.new
+    assert_equal(Status::SUCCESS, dbm.open(path, true, truncate: true, num_buckets: 1000))
+    assert_equal(Status::SUCCESS, dbm.process("abc", true) {|k, v| nil})
+    assert_equal(nil, dbm.get("abc"))
+    assert_equal(Status::SUCCESS, dbm.process("abc", false) {|k, v| nil})
+    assert_equal(nil, dbm.get("abc"))
+    assert_equal(Status::SUCCESS, dbm.process("abc", true) {|k, v| "ABCDE"})
+    assert_equal("ABCDE", dbm.get("abc"))
+    assert_equal(Status::SUCCESS, dbm.process("abc", false) {|k, v|
+                   assert_equal("abc", k)
+                   assert_equal("ABCDE", v)
+                   nil
+                 })
+    assert_equal(Status::SUCCESS, dbm.process("abc", true) {|k, v| false})
+    assert_equal(nil, dbm.get("abc"))
+    assert_equal(Status::SUCCESS, dbm.process("abc", false) {|k, v|
+                   assert_equal("abc", k)
+                   assert_equal(nil, v)
+                   nil
+                 })
+    (0...10).each {|i|
+      assert_equal(Status::SUCCESS, dbm.process(i, true) {|k, v| i * i})
+    }
+    assert_equal(10, dbm.count)
+    assert_equal(Status::SUCCESS, dbm.close)
+  end
+
   # Iterator tests.
   def test_iterator
     confs = [
