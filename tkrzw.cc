@@ -207,6 +207,11 @@ static std::vector<std::pair<std::string_view, std::string_view>> ExtractSVPairs
   return result;
 }
 
+// Calls a ruby block with two parameter supressing any exception.
+static VALUE call_ruby_block(VALUE args) {
+  return rb_yield_values(2, rb_ary_entry(args, 0), rb_ary_entry(args, 1));
+}
+
 // Define the module.
 static void DefineModule() {
   mod_tkrzw = rb_define_module("Tkrzw");
@@ -901,11 +906,6 @@ static VALUE dbm_close(VALUE vself) {
   return MakeStatusValue(std::move(status));
 }
 
-// Calls a ruby function with any exception
-static VALUE call_ruby_block(VALUE args) {
-  return rb_yield_values(2, rb_ary_entry(args, 0), rb_ary_entry(args, 1));
-}
-
 // Implementation of DBM#process.
 static VALUE dbm_process(int argc, VALUE* argv, VALUE vself) {
   StructDBM* sdbm = nullptr;
@@ -1454,6 +1454,50 @@ static VALUE dbm_push_last(int argc, VALUE* argv, VALUE vself) {
   NativeFunction(sdbm->concurrent, [&]() {
       status = sdbm->dbm->PushLast(value, wtime);
     });
+  return MakeStatusValue(std::move(status));
+}
+
+// Implementation of DBM#process_each.
+static VALUE dbm_process_each(VALUE vself, VALUE vwritable) {
+  StructDBM* sdbm = nullptr;
+  Data_Get_Struct(vself, StructDBM, sdbm);
+  if (sdbm->dbm == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened database");
+  }
+  if (sdbm->concurrent) {
+    rb_raise(rb_eRuntimeError, "the concurrent mode is not supported");
+  }
+  rb_need_block();
+  const bool writable = RTEST(vwritable);
+  std::string rvph;
+  bool block_error = false;
+  auto func = [&](std::string_view reckey, std::string_view recvalue) -> std::string_view {
+    volatile VALUE vreckey = reckey.data() == tkrzw::DBM::RecordProcessor::NOOP.data() ?
+        Qnil : MakeString(reckey, sdbm->venc);
+    volatile VALUE vrecvalue = recvalue.data() == tkrzw::DBM::RecordProcessor::NOOP.data() ?
+        Qnil : MakeString(recvalue, sdbm->venc);
+    volatile VALUE vargs = rb_ary_new3(2, vreckey, vrecvalue);
+    int state = 0;
+    volatile VALUE vrv = rb_protect(call_ruby_block, vargs, &state);
+    std::string_view rv;
+    if (state) {
+      block_error = true;
+      rv = tkrzw::DBM::RecordProcessor::NOOP;
+    } else if (vrv == Qnil) {
+      rv = tkrzw::DBM::RecordProcessor::NOOP;
+    } else if (vrv == Qfalse) {
+      rv = tkrzw::DBM::RecordProcessor::REMOVE;
+    } else {
+      vrv = StringValueEx(vrv);
+      rvph = GetStringView(vrv);
+      rv = rvph;
+    }
+    return rv;
+  };
+  tkrzw::Status status = sdbm->dbm->ProcessEach(func, writable);
+  if (block_error && status.IsOK()) {
+    status.Set(tkrzw::Status::UNKNOWN_ERROR, "exception from the block code");
+  }
   return MakeStatusValue(std::move(status));
 }
 
@@ -2019,6 +2063,7 @@ static void DefineDBM() {
   rb_define_method(cls_dbm, "rekey", (METHOD)dbm_rekey, -1);
   rb_define_method(cls_dbm, "pop_first", (METHOD)dbm_pop_first, -1);
   rb_define_method(cls_dbm, "push_last", (METHOD)dbm_push_last, -1);
+  rb_define_method(cls_dbm, "process_each", (METHOD)dbm_process_each, 1);
   rb_define_method(cls_dbm, "count", (METHOD)dbm_count, 0);
   rb_define_method(cls_dbm, "file_size", (METHOD)dbm_file_size, 0);
   rb_define_method(cls_dbm, "file_path", (METHOD)dbm_file_path, 0);

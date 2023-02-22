@@ -486,6 +486,28 @@ class TkrzwTest < Test::Unit::TestCase
       assert_equal(Status::SUCCESS, dbm.process(i, true) {|k, v| i * i})
     }
     assert_equal(10, dbm.count)
+    count_empty = 0
+    count_full = 0
+    assert_equal(Status::SUCCESS, dbm.process_each(false) {|k, v|
+                   if k
+                     count_full += 1
+                   else
+                     count_empty += 1
+                   end
+                   nil
+                 });
+    assert_equal(2, count_empty)
+    assert_equal(10, count_full)
+    assert_equal(Status::SUCCESS, dbm.process_each(true) {|k, v|
+                   next if not k
+                   (v.to_i ** 0.5).to_i
+                 })
+    assert_equal(Status::SUCCESS, dbm.process_each(true) {|k, v|
+                   next if not k
+                   assert_equal(k, v)
+                   false
+                 })
+    assert_equal(0, dbm.count)
     assert_equal(Status::SUCCESS, dbm.close)
   end
 
