@@ -19,7 +19,7 @@ File::unlink("Makefile") if File::exist?("Makefile")
 dir_config('tkrzw')
 
 home = ENV["HOME"]
-ENV["PATH"] = ENV["PATH"] + ":/usr/local/bin:$home/bin:."
+ENV["PATH"] = ENV["PATH"] + ":/usr/local/bin:#{home}/bin:#{home}/local/bin:."
 tkcflags = `tkrzw_build_util config -i 2>/dev/null`.chomp
 tkldflags = `tkrzw_build_util config -l 2>/dev/null`.chomp
 tkldflags = tkldflags.gsub(/-l[\S]+/, "").strip
