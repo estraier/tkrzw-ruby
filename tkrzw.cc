@@ -1892,12 +1892,14 @@ static VALUE dbm_make_iterator(VALUE vself) {
 
 // Implementation of DBM.restore_database.
 static VALUE dbm_restore_database(int argc, VALUE* argv, VALUE vself) {
-  volatile VALUE vold_file_path, vnew_file_path, vclass_name, vend_offset;
-  rb_scan_args(argc, argv, "22", &vold_file_path, &vnew_file_path, &vclass_name, &vend_offset);
+  volatile VALUE vold_file_path, vnew_file_path, vclass_name, vend_offset, vcipher_key;
+  rb_scan_args(argc, argv, "23", &vold_file_path, &vnew_file_path,
+               &vclass_name, &vend_offset, &vcipher_key);
   const std::string_view old_file_path = GetStringView(StringValueEx(vold_file_path));
   const std::string_view new_file_path = GetStringView(StringValueEx(vnew_file_path));
   const std::string_view class_name = GetStringView(StringValueEx(vclass_name));
   const int64_t end_offset = vend_offset == Qnil ? -1 : GetInteger(vend_offset);
+  const std::string_view cipher_key = GetStringView(StringValueEx(vcipher_key));
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   int32_t num_shards = 0;
   if (tkrzw::ShardDBM::GetNumberOfShards(std::string(old_file_path), &num_shards) ==
@@ -1905,13 +1907,13 @@ static VALUE dbm_restore_database(int argc, VALUE* argv, VALUE vself) {
     NativeFunction(true, [&]() {
       status = tkrzw::ShardDBM::RestoreDatabase(
         std::string(old_file_path), std::string(new_file_path),
-        std::string(class_name), end_offset);
+        std::string(class_name), end_offset, cipher_key);
     });
   } else {
     NativeFunction(true, [&]() {
       status = tkrzw::PolyDBM::RestoreDatabase(
           std::string(old_file_path), std::string(new_file_path),
-          std::string(class_name), end_offset);
+          std::string(class_name), end_offset, cipher_key);
     });
   }
   return MakeStatusValue(std::move(status));
