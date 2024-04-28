@@ -270,6 +270,7 @@ class TkrzwTest < Test::Unit::TestCase
         assert_equal(records, iter_records)
       end
       iter.destruct
+      assert_true(iter.inspect.include?("Tkrzw::Iterator"))
       if not path.empty?
         dir, base = File.split(path)
         ext = File.extname(base)
@@ -456,6 +457,7 @@ class TkrzwTest < Test::Unit::TestCase
         assert_equal(Status::SUCCESS, dbm.close)
       end
       dbm.destruct
+      assert_true(dbm.inspect.include?("Tkrzw::DBM"))
     end      
   end
 
@@ -732,7 +734,7 @@ class TkrzwTest < Test::Unit::TestCase
     dbm.destruct
     file = Tkrzw::File.new
     assert_equal(Status::SUCCESS, file.open(dest_path, false))
-    assert_true(file.inspect.include?("File"))
+    assert_true(file.inspect.include?("Tkrzw::File"))
     assert_true(file.to_s.include?("File"))
     assert_equal(12, file.search("contain", "001").size)
     assert_equal(3, file.search("contain", "001", 3).size)
@@ -747,6 +749,7 @@ class TkrzwTest < Test::Unit::TestCase
     end
     assert_equal(Status::SUCCESS, file.close)
     file.destruct
+    assert_true(file.inspect.include?("Tkrzw::File"))
   end
 
   # AsyncDBM tests.
@@ -756,7 +759,7 @@ class TkrzwTest < Test::Unit::TestCase
     copy_path = _make_tmp_path("casket-copy.tkh")
     assert_equal(Status::SUCCESS, dbm.open(path, true, num_buckets: 100, concurrent: true))
     async = AsyncDBM.new(dbm, 4)
-    assert_true(async.inspect.index("AsyncDBM") != nil)
+    assert_true(async.inspect.include?("Tkrzw::AsyncDBM"))
     assert_true(async.to_s.index("AsyncDBM") != nil)
     set_future = async.set("one", "hop")
     assert_true(set_future.inspect.index("Future") != nil)
@@ -891,6 +894,7 @@ class TkrzwTest < Test::Unit::TestCase
     assert_equal("\0\0\0\0\0\0\0\0", pop_result[1])
     assert_equal("foo", pop_result[2])
     async.destruct
+    assert_true(async.inspect.include?("Tkrzw::AsyncDBM"))
     assert_equal(Status::SUCCESS, dbm.close)
   end
 
@@ -901,6 +905,7 @@ class TkrzwTest < Test::Unit::TestCase
     assert_equal(Status::SUCCESS, file.open(
                    path, true, truncate: true, file: "pos-atom", block_size: 512,
                    access_options: "padding:pagecache"))
+    assert_true(file.inspect.include?("Tkrzw::File"))
     assert_equal(Status::SUCCESS, file.write(5, "12345"))
     assert_equal(Status::SUCCESS, file.write(0, "ABCDE"))
     assert_equal(10, file.append("FGH"))
@@ -921,6 +926,106 @@ class TkrzwTest < Test::Unit::TestCase
     assert_equal("E12345F", file.read(4, 7))
     assert_equal(Status::SUCCESS, file.close)
     file.destruct
+    assert_true(file.inspect.include?("Tkrzw::File"))
+  end
+
+  # Index tests.
+  def test_index
+    index = Tkrzw::Index.new
+    path = _make_tmp_path("casket.tkt")
+    assert_equal(Status::SUCCESS, index.open(path, true, truncate: true, num_buckets: 100))
+    assert_true(index.inspect.include?("Tkrzw::Index"))
+    assert_true(index.to_s.include?(path))
+    assert_false(index.include?("single", "1"))
+    assert_false(index.include?("double", "11"))
+    assert_equal(Status::SUCCESS, index.add("single", "1"))
+    assert_equal(Status::SUCCESS, index.add("double", "11"))
+    assert_true(index.include?("single", "1"))
+    assert_true(index.include?("double", "11"))
+    assert_equal(Status::SUCCESS, index.add("single", "2"))
+    assert_equal(Status::SUCCESS, index.add("double", "22"))
+    assert_equal(Status::SUCCESS, index.add("triple", "222"))
+    values = index.get_values("single")
+    assert_equal(2, values.length)
+    assert_equal("1", values[0])
+    assert_equal("2", values[1])
+    values = index.get_values("triple")
+    assert_equal(1, values.length)
+    assert_equal("222", values[0])
+    assert_equal(0, index.get_values("foo").length)
+    assert_equal(Status::SUCCESS, index.remove("single", "1"))
+    assert_equal(Status::SUCCESS, index.remove("double", "11"))
+    assert_equal(Status::NOT_FOUND_ERROR, index.remove("triple", "x"))
+    values = index.get_values("double")
+    assert_equal(1, values.length)
+    assert_equal("22", values[0])
+    assert_equal(3, index.count)
+    assert_equal(path, index.file_path)
+    assert_equal(Status::SUCCESS, index.synchronize(false))
+    assert_equal(Status::SUCCESS, index.rebuild)
+    assert_equal(3, index.to_i)
+    assert_equal(Status::SUCCESS, index.clear)
+    assert_equal(0, index.count)
+    assert_true(index.open?)
+    assert_true(index.writable?)
+    assert_equal(Status::SUCCESS, index.add("first", "1"))
+    assert_equal(Status::SUCCESS, index.add("second", "22"))
+    assert_equal(Status::SUCCESS, index.add("third", "333"))
+    iter = index.make_iterator
+    assert_true(iter.inspect.include?("Tkrzw::IndexIterator"))
+    assert_true(iter.to_s.include?("unlocated"))
+    iter.first()
+    assert_true(iter.inspect.include?("first"))
+    assert_true(iter.to_s.include?("first"))
+    record = iter.get
+    assert_true(record != nil)
+    assert_equal("first", record[0])
+    assert_equal("1", record[1])
+    iter.next()
+    record = iter.get
+    assert_true(record != nil)
+    assert_equal("second", record[0])
+    assert_equal("22", record[1])
+    iter.next()
+    record = iter.get
+    assert_true(record != nil)
+    assert_equal("third", record[0])
+    assert_equal("333", record[1])
+    iter.next()
+    assert_equal(nil, iter.get)
+    iter.last()
+    record = iter.get
+    assert_true(record != nil)
+    assert_equal("third", record[0])
+    assert_equal("333", record[1])
+    iter.previous()
+    record = iter.get
+    assert_true(record != nil)
+    assert_equal("second", record[0])
+    assert_equal("22", record[1])
+    iter.previous()
+    record = iter.get
+    assert_true(record != nil)
+    assert_equal("first", record[0])
+    assert_equal("1", record[1])
+    iter.previous()
+    assert_equal(nil, iter.get)
+    iter.jump("second", "")
+    record = iter.get
+    assert_true(record != nil)
+    assert_equal("second", record[0])
+    assert_equal("22", record[1])
+    records = {}
+    index.each do |key, value|
+      records[key] = value
+    end
+    assert_equal(3, records.size)
+    assert_equal("1", records["first"])
+    assert_equal("22", records["second"])
+    assert_equal("333", records["third"])
+    assert_equal(Status::SUCCESS, index.close)
+    index.destruct
+    assert_true(index.inspect.include?("Tkrzw::Index"))
   end
 end
 

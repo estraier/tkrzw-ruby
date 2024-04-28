@@ -256,7 +256,7 @@ module Tkrzw
   end
 
   # Polymorphic database manager.
-  # All operations except for "open" and "close" are thread-safe; Multiple threads can access the same database concurrently.  You can specify a data structure when you call the "open" method.  Every opened database must be closed explicitly by the "close" method to avoid data corruption.  Moreover, every unused database object should be destructed by the "destruct" method to free resources.
+  # All operations except for "open" and "close" are thread-safe; Multiple threads can access the same database concurrently.  You can specify a data structure when you call the "open" method.  Every opened database must be closed explicitly by the "close" method to avoid data corruption.
   class DBM
     # The special bytes value for no-operation or any data.
     ANY_DATA = "\x00[ANY]\x00"
@@ -267,6 +267,7 @@ module Tkrzw
     end
 
     # Releases the resource explicitly.
+    # The database is closed implicitly if it has not been closed.  As long as you close the database explicitly, you don't have to call this method.
     def destruct()
       # (native code)
     end
@@ -1054,7 +1055,7 @@ module Tkrzw
   end
 
   # Generic file implementation.
-  # All operations except for "open" and "close" are thread-safe; Multiple threads can access the same file concurrently.  You can specify a concrete class when you call the "open" method.  Every opened file must be closed explicitly by the "close" method to avoid data corruption.  Moreover, every unused file object should be destructed by the "destruct" method to free resources.
+  # All operations except for "open" and "close" are thread-safe; Multiple threads can access the same file concurrently.  You can specify a concrete class when you call the "open" method.  Every opened file must be closed explicitly by the "close" method to avoid data corruption.
   class File
     # Initializes the file object.
     def initialize()
@@ -1062,6 +1063,7 @@ module Tkrzw
     end
 
     # Releases the resource explicitly.
+    # The file is closed implicitly if it has not been closed.  As long as you close the file explicitly, you don't have to call this method.
     def destruct()
       # (native code)
     end
@@ -1154,6 +1156,201 @@ module Tkrzw
     # @param capacity The maximum records to obtain.  0 means unlimited.
     # @return A list of lines matching the condition.
     def search(mode, pattern, capacity=0)
+      # (native code)
+    end
+
+    # Returns a string representation of the content.
+    # @return The string representation of the content.
+    def to_s()
+      # (native code)
+    end
+
+    # Returns a string representation of the object.
+    # @return The string representation of the object.
+    def inspect()
+      # (native code)
+    end
+  end
+
+  # Secondary index interface.
+  # All operations except for "open" and "close" are thread-safe; Multiple threads can access the same file concurrently.  You can specify a data structure when you call the "open" method.  Every opened index must be closed explicitly by the "close" method to avoid data corruption.
+  class Index
+    # Does nothing especially.
+    def initialize()
+      # (native code)
+    end
+
+    # Releases the resource explicitly.
+    # The index is closed implicitly if it has not been closed.  As long as you close the index explicitly, you don't have to call this method.
+    def destruct()
+      # (native code)
+    end
+
+    # Opens an index file.
+    # @param path A path of the file.
+    # @param writable If true, the file is writable.  If false, it is read-only.
+    # @param params Optional keyword parameters.
+    # @:return The result status.
+    # If the path is empty, BabyDBM is used internally, which is equivalent to using the MemIndex class.  If the path ends with ".tkt", TreeDBM is used internally, which is equivalent to using the FileIndex class.  If the key comparator of the tuning parameter is not set, PairLexicalKeyComparator is set implicitly.  Other compatible key comparators are PairLexicalCaseKeyComparator, PairDecimalKeyComparator, PairHexadecimalKeyComparator, and PairRealNumberKeyComparator.  Other options can be specified as with DBM#open.
+    def open(path, writable, **params)
+      # (native code)
+    end
+
+    # Closes the index file.
+    # @return The result status.
+    def close()
+      # (native code)
+    end
+
+    # Checks if a record exists or not.
+    # @param key The key of the record.
+    # @return True if the record exists, or false if not.
+    def include?(key)
+      # (native code)
+    end
+
+    # Gets all values of records of a key.
+    # @param key The key to look for.
+    # @param max The maximum number of values to get.  0 means unlimited.
+    # @return A list of all values of the key.  An empty list is returned on failure.
+    def get_values(key, max=0)
+      # (native code)
+    end
+
+    # Adds a record.
+    # @param key The key of the record.  This can be an arbitrary expression to search the index.
+    # @param value The value of the record.  This should be a primary value of another database.
+    # @return The result status.
+    def add(key, value)
+      # (native code)
+    end
+
+    # Removes a record.
+    # @param key The key of the record.
+    # @param value The value of the record.
+    # @return The result status.
+    def remove(key, value)
+      # (native code)
+    end
+
+    # Gets the number of records.
+    # @return The number of records, or 0 on failure.
+    def count()
+      # (native code)
+    end
+
+    # Gets the path of the index file.
+    # @return The file path of the index, or an empty string on failure.
+    def file_path()
+      # (native code)
+    end
+
+    # Removes all records.
+    # @return The result status.
+    def clear()
+      # (native code)
+    end
+
+    # Rebuilds the entire index.
+    # @return The result status.
+    def rebuild()
+      # (native code)
+    end
+
+    # Synchronizes the content of the index to the file system.
+    # @param hard True to do physical synchronization with the hardware or false to do only logical synchronization with the file system.
+    # @return The result status.
+    def synchronize(hard)
+      # (native code)
+    end
+
+    # Checks whether the index is open.
+    # @return True if the index is open, or false if not.
+    def open?()
+      # (native code)
+    end
+
+    # Checks whether the index is writable.
+    # @return True if the index is writable, or false if not.
+    def writable?()
+      # (native code)
+    end
+
+    # Makes an iterator for each record.
+    # @return The iterator for each record.
+    # Every iterator should be destructed explicitly by the "destruct" method.
+    def make_iterator()
+      # (native code)
+    end
+
+    # Returns a string representation of the content.
+    # @return The string representation of the content.
+    def to_s()
+      # (native code)
+    end
+
+    # Gets the number of records.
+    # @return The number of records on success, or 0 on failure.
+    def to_i()
+      # (native code)
+    end
+
+    # Returns a string representation of the object.
+    # @return The string representation of the object.
+    def inspect()
+      # (native code)
+    end
+
+    # Calls the given block with the key and the value of each record
+    def each(&block)
+      # (native code)
+    end
+  end
+
+  # Iterator for each record of the secondary index.
+  # An iterator is made by the "make_iterator" method of Index.  Every unused iterator object should be destructed explicitly by the "destruct" method to free resources.
+  class IndexIterator
+    # Initializes the iterator.
+    # @param index The index to scan.
+    def initialize(index)
+      # (native code)
+    end
+
+    # Releases the resource explicitly.
+    def destruct()
+      # (native code)
+    end
+
+    # Initializes the iterator to indicate the first record.
+    def first()
+      # (native code)
+    end
+
+    # Initializes the iterator to indicate the last record.
+    def last()
+      # (native code)
+    end
+
+    # Initializes the iterator to indicate a specific range.
+    # @param key The key of the lower bound.
+    # @param value The value of the lower bound.
+    def jump(key, value="")
+      # (native code)
+    end
+
+    # Moves the iterator to the next record.
+    def next()
+      # (native code)
+    end
+
+    # Moves the iterator to the previous record.
+    def previous()
+      # (native code)
+    end
+
+    # Gets the key and the value of the current record of the iterator.
+    # @return A tuple of the key and the value of the current record.  On failure, nil is returned.
+    def get()
       # (native code)
     end
 

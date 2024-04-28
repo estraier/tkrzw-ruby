@@ -59,6 +59,8 @@ volatile VALUE cls_dbm;
 volatile VALUE cls_iter;
 volatile VALUE cls_asyncdbm;
 volatile VALUE cls_file;
+volatile VALUE cls_index;
+volatile VALUE cls_indexiter;
 volatile VALUE obj_dbm_any_data;
 
 // Generates a string expression of an arbitrary object.
@@ -295,7 +297,20 @@ struct StructFile {
   std::unique_ptr<tkrzw::PolyFile> file;
   bool concurrent = false;
   volatile VALUE venc = Qnil;
-  explicit StructFile(tkrzw::PolyFile* file) : file(file) {}
+};
+
+// Ruby wrapper of the Index object.
+struct StructIndex {
+  std::unique_ptr<tkrzw::PolyIndex> index;
+  bool concurrent = false;
+  volatile VALUE venc = Qnil;
+};
+
+// Ruby wrapper of the IndexIterator object.
+struct StructIndexIter {
+  std::unique_ptr<tkrzw::PolyIndex::Iterator> iter;
+  bool concurrent = false;
+  volatile VALUE venc = Qnil;
 };
 
 // Implementation of Utility.get_memory_capacity.
@@ -732,9 +747,9 @@ static VALUE future_inspect(VALUE vself) {
   StructFuture* sfuture = nullptr;
   Data_Get_Struct(vself, StructFuture, sfuture);
   if (sfuture->future == nullptr) {
-    rb_raise(rb_eRuntimeError, "destructed object");
+    return rb_str_new2("#<Tkrzw::Future:(destructed object)>");
   }
-  const std::string str = tkrzw::SPrintF("#<Tkrzw::Future: %p>", (void*)sfuture->future.get());
+  const std::string str = tkrzw::SPrintF("#<Tkrzw::Future:%p>", (void*)sfuture->future.get());
   return rb_str_new(str.data(), str.size());
 }
 
@@ -856,7 +871,7 @@ static VALUE dbm_open(int argc, VALUE* argv, VALUE vself) {
     open_options |= tkrzw::File::OPEN_NO_CREATE;
   }
   if (tkrzw::StrToBool(tkrzw::SearchMap(params, "no_wait", "false"))) {
-      open_options |= tkrzw::File::OPEN_NO_WAIT;
+    open_options |= tkrzw::File::OPEN_NO_WAIT;
   }
   if (tkrzw::StrToBool(tkrzw::SearchMap(params, "no_lock", "false"))) {
     open_options |= tkrzw::File::OPEN_NO_LOCK;
@@ -1872,8 +1887,8 @@ static VALUE dbm_search(int argc, VALUE* argv, VALUE vself) {
   std::vector<std::string> keys;
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(sdbm->concurrent, [&]() {
-    status = tkrzw::SearchDBMModal(sdbm->dbm.get(), mode, pattern, &keys, capacity);
-  });
+      status = tkrzw::SearchDBMModal(sdbm->dbm.get(), mode, pattern, &keys, capacity);
+    });
   if (status != tkrzw::Status::SUCCESS) {
     const std::string& message = tkrzw::ToString(status);
     rb_raise(cls_expt, "%s", message.c_str());
@@ -1906,8 +1921,8 @@ static VALUE dbm_restore_database(int argc, VALUE* argv, VALUE vself) {
       tkrzw::Status::SUCCESS) {
     NativeFunction(true, [&]() {
       status = tkrzw::ShardDBM::RestoreDatabase(
-        std::string(old_file_path), std::string(new_file_path),
-        std::string(class_name), end_offset, cipher_key);
+          std::string(old_file_path), std::string(new_file_path),
+          std::string(class_name), end_offset, cipher_key);
     });
   } else {
     NativeFunction(true, [&]() {
@@ -1963,7 +1978,7 @@ static VALUE dbm_inspect(VALUE vself) {
   StructDBM* sdbm = nullptr;
   Data_Get_Struct(vself, StructDBM, sdbm);
   if (sdbm->dbm == nullptr) {
-    rb_raise(rb_eRuntimeError, "not opened database");
+    return rb_str_new2("#<Tkrzw::DBM:(not opened database)>");
   }
   std::string class_name = "unknown";
   std::string path = "-";
@@ -2319,7 +2334,7 @@ static VALUE iter_get(int argc, VALUE* argv, VALUE vself) {
   volatile VALUE vstatus;
   rb_scan_args(argc, argv, "01", &vstatus);
   std::string key, value;
-   tkrzw::Status status(tkrzw::Status::SUCCESS);
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(siter->concurrent, [&]() {
       status = siter->iter->Get(&key, &value);
     });
@@ -2345,7 +2360,7 @@ static VALUE iter_get_key(int argc, VALUE* argv, VALUE vself) {
   volatile VALUE vstatus;
   rb_scan_args(argc, argv, "01", &vstatus);
   std::string key;
-   tkrzw::Status status(tkrzw::Status::SUCCESS);
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(siter->concurrent, [&]() {
       status = siter->iter->Get(&key);
     });
@@ -2368,7 +2383,7 @@ static VALUE iter_get_value(int argc, VALUE* argv, VALUE vself) {
   volatile VALUE vstatus;
   rb_scan_args(argc, argv, "01", &vstatus);
   std::string value;
-   tkrzw::Status status(tkrzw::Status::SUCCESS);
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(siter->concurrent, [&]() {
       status = siter->iter->Get(nullptr, &value);
     });
@@ -2421,7 +2436,7 @@ static VALUE iter_step(int argc, VALUE* argv, VALUE vself) {
   volatile VALUE vstatus;
   rb_scan_args(argc, argv, "01", &vstatus);
   std::string key, value;
-   tkrzw::Status status(tkrzw::Status::SUCCESS);
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(siter->concurrent, [&]() {
       status = siter->iter->Step(&key, &value);
     });
@@ -2461,14 +2476,14 @@ static VALUE iter_inspect(VALUE vself) {
   StructIter* siter = nullptr;
   Data_Get_Struct(vself, StructIter, siter);
   if (siter->iter == nullptr) {
-    rb_raise(rb_eRuntimeError, "destructed Iterator");
+    return rb_str_new2("#<Tkrzw::Iterator:(destructed object)>");
   }
   std::string key;
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(siter->concurrent, [&]() {
       status = siter->iter->Get(&key);
     });
-  if (status  != tkrzw::Status::SUCCESS) {
+  if (status != tkrzw::Status::SUCCESS) {
     key = "(unlocated)";
   }
   const std::string& expr =
@@ -2552,10 +2567,10 @@ static VALUE asyncdbm_inspect(VALUE vself) {
   StructAsyncDBM* sasync = nullptr;
   Data_Get_Struct(vself, StructAsyncDBM, sasync);
   if (sasync->async == nullptr) {
-    rb_raise(rb_eRuntimeError, "destructed object");
+    return rb_str_new2("#<Tkrzw::AsyncDBM:(not opened database)>");
   }
   const std::string str = tkrzw::SPrintF(
-      "#<Tkrzw::AsyncDBM: %p>", (void*)sasync->async.get());
+      "#<Tkrzw::AsyncDBM:%p>", (void*)sasync->async.get());
   return rb_str_new(str.data(), str.size());
 }
 
@@ -2995,7 +3010,7 @@ static void file_del(void* ptr) {
 
 // Implementation of File.new.
 static VALUE file_new(VALUE cls) {
-  StructFile* sfile = new StructFile(new tkrzw::PolyFile);
+  StructFile* sfile = new StructFile;
   return Data_Wrap_Struct(cls_file, 0, file_del, sfile);
 }
 
@@ -3016,8 +3031,8 @@ static VALUE file_destruct(VALUE vself) {
 static VALUE file_open(int argc, VALUE* argv, VALUE vself) {
   StructFile* sfile = nullptr;
   Data_Get_Struct(vself, StructFile, sfile);
-  if (sfile->file == nullptr) {
-    rb_raise(rb_eRuntimeError, "destructed File");
+  if (sfile->file != nullptr) {
+    rb_raise(rb_eRuntimeError, "opened file");
   }
   volatile VALUE vpath, vwritable, vparams;
   rb_scan_args(argc, argv, "21", &vpath, &vwritable, &vparams);
@@ -3049,6 +3064,7 @@ static VALUE file_open(int argc, VALUE* argv, VALUE vself) {
   if (encoding.empty()) {
     encoding = "ASCII-8BIT";
   }
+  sfile->file.reset(new tkrzw::PolyFile);
   sfile->concurrent = concurrent;
   sfile->venc = GetEncoding(encoding);
   tkrzw::Status status(tkrzw::Status::SUCCESS);
@@ -3063,12 +3079,13 @@ static VALUE file_close(VALUE vself) {
   StructFile* sfile = nullptr;
   Data_Get_Struct(vself, StructFile, sfile);
   if (sfile->file == nullptr) {
-    rb_raise(rb_eRuntimeError, "destructed File");
+    rb_raise(rb_eRuntimeError, "not opened file");
   }
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(true, [&]() {
-      status = sfile->file->Close();
-    });
+    status = sfile->file->Close();
+  });
+  sfile->file.reset(nullptr);
   return MakeStatusValue(std::move(status));
 }
 
@@ -3077,7 +3094,7 @@ static VALUE file_read(int argc, VALUE* argv, VALUE vself) {
   StructFile* sfile = nullptr;
   Data_Get_Struct(vself, StructFile, sfile);
   if (sfile->file == nullptr) {
-    rb_raise(rb_eRuntimeError, "destructed File");
+    rb_raise(rb_eRuntimeError, "not opened file");
   }
   volatile VALUE voff, vsize, vstatus;
   rb_scan_args(argc, argv, "21", &voff, &vsize, &vstatus);
@@ -3105,7 +3122,7 @@ static VALUE file_write(VALUE vself, VALUE voff, VALUE vdata) {
   StructFile* sfile = nullptr;
   Data_Get_Struct(vself, StructFile, sfile);
   if (sfile->file == nullptr) {
-    rb_raise(rb_eRuntimeError, "destructed File");
+    rb_raise(rb_eRuntimeError, "not opened file");
   }
   const int64_t off = std::max<int64_t>(0, GetInteger(voff));
   vdata = StringValueEx(vdata);
@@ -3122,7 +3139,7 @@ static VALUE file_append(int argc, VALUE* argv, VALUE vself) {
   StructFile* sfile = nullptr;
   Data_Get_Struct(vself, StructFile, sfile);
   if (sfile->file == nullptr) {
-    rb_raise(rb_eRuntimeError, "destructed File");
+    rb_raise(rb_eRuntimeError, "not opened file");
   }
   volatile VALUE vdata, vstatus;
   rb_scan_args(argc, argv, "11", &vdata, &vstatus);
@@ -3147,13 +3164,13 @@ static VALUE file_truncate(VALUE vself, VALUE vsize) {
   StructFile* sfile = nullptr;
   Data_Get_Struct(vself, StructFile, sfile);
   if (sfile->file == nullptr) {
-    rb_raise(rb_eRuntimeError, "destructed File");
+    rb_raise(rb_eRuntimeError, "not opened file");
   }
   const int64_t size = std::max<int64_t>(0, GetInteger(vsize));
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(true, [&]() {
-      status = sfile->file->Truncate(size);
-    });
+    status = sfile->file->Truncate(size);
+  });
   return MakeStatusValue(std::move(status));
 }
 
@@ -3162,7 +3179,7 @@ static VALUE file_synchronize(int argc, VALUE* argv, VALUE vself) {
   StructFile* sfile = nullptr;
   Data_Get_Struct(vself, StructFile, sfile);
   if (sfile->file == nullptr) {
-    rb_raise(rb_eRuntimeError, "destructed File");
+    rb_raise(rb_eRuntimeError, "not opened file");
   }
   volatile VALUE vhard, voff, vsize;
   rb_scan_args(argc, argv, "12", &vhard, &voff, &vsize);
@@ -3181,7 +3198,7 @@ static VALUE file_get_size(VALUE vself) {
   StructFile* sfile = nullptr;
   Data_Get_Struct(vself, StructFile, sfile);
   if (sfile->file == nullptr) {
-    rb_raise(rb_eRuntimeError, "destructed File");
+    rb_raise(rb_eRuntimeError, "not opened file");
   }
   int64_t size = 0;
   NativeFunction(sfile->concurrent, [&]() {
@@ -3198,7 +3215,7 @@ static VALUE file_get_path(VALUE vself) {
   StructFile* sfile = nullptr;
   Data_Get_Struct(vself, StructFile, sfile);
   if (sfile->file == nullptr) {
-    rb_raise(rb_eRuntimeError, "destructed File");
+    rb_raise(rb_eRuntimeError, "not opened file");
   }
   std::string path;
   tkrzw::Status status(tkrzw::Status::SUCCESS);
@@ -3216,7 +3233,7 @@ static VALUE file_search(int argc, VALUE* argv, VALUE vself) {
   StructFile* sfile = nullptr;
   Data_Get_Struct(vself, StructFile, sfile);
   if (sfile->file == nullptr) {
-    rb_raise(rb_eRuntimeError, "destructed File");
+    rb_raise(rb_eRuntimeError, "not opened file");
   }
   volatile VALUE vmode, vpattern, vcapacity;
   rb_scan_args(argc, argv, "21", &vmode, &vpattern, &vcapacity);
@@ -3228,8 +3245,8 @@ static VALUE file_search(int argc, VALUE* argv, VALUE vself) {
   std::vector<std::string> lines;
   tkrzw::Status status(tkrzw::Status::SUCCESS);
   NativeFunction(sfile->concurrent, [&]() {
-    status = tkrzw::SearchTextFileModal(sfile->file.get(), mode, pattern, &lines, capacity);
-  });
+      status = tkrzw::SearchTextFileModal(sfile->file.get(), mode, pattern, &lines, capacity);
+    });
   if (status != tkrzw::Status::SUCCESS) {
     const std::string& message = tkrzw::ToString(status);
     rb_raise(cls_expt, "%s", message.c_str());
@@ -3245,6 +3262,9 @@ static VALUE file_search(int argc, VALUE* argv, VALUE vself) {
 static VALUE file_to_s(VALUE vself) {
   StructFile* sfile = nullptr;
   Data_Get_Struct(vself, StructFile, sfile);
+  if (sfile->file == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened file");
+  }
   std::string class_name = "unknown";
   auto* in_file = sfile->file->GetInternalFile();
   if (in_file != nullptr) {
@@ -3272,6 +3292,9 @@ static VALUE file_to_s(VALUE vself) {
 static VALUE file_inspect(VALUE vself) {
   StructFile* sfile = nullptr;
   Data_Get_Struct(vself, StructFile, sfile);
+  if (sfile->file == nullptr) {
+    return rb_str_new2("#<Tkrzw::File:(not opened file)>");
+  }
   std::string class_name = "unknown";
   auto* in_file = sfile->file->GetInternalFile();
   if (in_file != nullptr) {
@@ -3315,6 +3338,574 @@ static void DefineFile() {
   rb_define_method(cls_file, "inspect", (METHOD)file_inspect, 0);
 }
 
+// Implementation of Index#del.
+static void index_del(void* ptr) {
+  StructIndex* sindex = (StructIndex*)ptr;
+  sindex->index.reset(nullptr);
+  delete sindex;
+}
+
+// Implementation of Index.new.
+static VALUE index_new(VALUE cls) {
+  StructIndex* sindex = new StructIndex;
+  return Data_Wrap_Struct(cls_index, 0, index_del, sindex);
+}
+
+// Implementation of Index#initialize.
+static VALUE index_initialize(VALUE vself) {
+  return Qnil;
+}
+
+// Implementation of Index#destruct.
+static VALUE index_destruct(VALUE vself) {
+  StructIndex* sindex = nullptr;
+  Data_Get_Struct(vself, StructIndex, sindex);
+  sindex->index.reset(nullptr);
+  return Qnil;
+}
+
+// Implementation of DBM#open.
+static VALUE index_open(int argc, VALUE* argv, VALUE vself) {
+  StructIndex* sindex = nullptr;
+  Data_Get_Struct(vself, StructIndex, sindex);
+  if (sindex->index != nullptr) {
+    rb_raise(rb_eRuntimeError, "opened index");
+  }
+  volatile VALUE vpath, vwritable, vparams;
+  rb_scan_args(argc, argv, "21", &vpath, &vwritable, &vparams);
+  vpath = StringValueEx(vpath);
+  const std::string_view path = GetStringView(vpath);
+  const bool writable = RTEST(vwritable);
+  std::map<std::string, std::string> params = HashToMap(vparams);
+  bool concurrent = false;
+  if (tkrzw::StrToBool(tkrzw::SearchMap(params, "concurrent", "false"))) {
+    concurrent = true;
+  }
+  int32_t open_options = 0;
+  if (tkrzw::StrToBool(tkrzw::SearchMap(params, "truncate", "false"))) {
+    open_options |= tkrzw::File::OPEN_TRUNCATE;
+  }
+  if (tkrzw::StrToBool(tkrzw::SearchMap(params, "no_create", "false"))) {
+    open_options |= tkrzw::File::OPEN_NO_CREATE;
+  }
+  if (tkrzw::StrToBool(tkrzw::SearchMap(params, "no_wait", "false"))) {
+    open_options |= tkrzw::File::OPEN_NO_WAIT;
+  }
+  if (tkrzw::StrToBool(tkrzw::SearchMap(params, "no_lock", "false"))) {
+    open_options |= tkrzw::File::OPEN_NO_LOCK;
+  }
+  if (tkrzw::StrToBool(tkrzw::SearchMap(params, "sync_hard", "false"))) {
+    open_options |= tkrzw::File::OPEN_SYNC_HARD;
+  }
+  std::string encoding = tkrzw::SearchMap(params, "encoding", "");
+  if (encoding.empty()) {
+    encoding = "ASCII-8BIT";
+  }
+  params.erase("concurrent");
+  params.erase("truncate");
+  params.erase("no_create");
+  params.erase("no_wait");
+  params.erase("no_lock");
+  params.erase("sync_hard");
+  params.erase("encoding");
+  sindex->index.reset(new tkrzw::PolyIndex());
+  sindex->concurrent = concurrent;
+  sindex->venc = GetEncoding(encoding);
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sindex->concurrent, [&]() {
+      status = sindex->index->Open(std::string(path), writable, open_options, params);
+    });
+  return MakeStatusValue(std::move(status));
+}
+
+// Implementation of DBM#close.
+static VALUE index_close(VALUE vself) {
+  StructIndex* sindex = nullptr;
+  Data_Get_Struct(vself, StructIndex, sindex);
+  if (sindex->index == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened index");
+  }
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sindex->concurrent, [&]() {
+      status = sindex->index->Close();
+    });
+  sindex->index.reset(nullptr);
+  return MakeStatusValue(std::move(status));
+}
+
+// Implementation of Index#include?.
+static VALUE index_include(int argc, VALUE* argv, VALUE vself) {
+  StructIndex* sindex = nullptr;
+  Data_Get_Struct(vself, StructIndex, sindex);
+  if (sindex->index == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened index");
+  }
+  volatile VALUE vkey, vvalue;
+  rb_scan_args(argc, argv, "11", &vkey, &vvalue);
+  vkey = StringValueEx(vkey);
+  const std::string_view key = GetStringView(vkey);
+  vvalue = StringValueEx(vvalue);
+  const std::string_view value = GetStringView(vvalue);
+  bool ok = false;
+  NativeFunction(sindex->concurrent, [&]() {
+      ok = sindex->index->Check(key, value);
+    });
+  return ok ? Qtrue : Qfalse;
+}
+
+// Implementation of Index#get_values.
+static VALUE index_get_values(int argc, VALUE* argv, VALUE vself) {
+  StructIndex* sindex = nullptr;
+  Data_Get_Struct(vself, StructIndex, sindex);
+  if (sindex->index == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened index");
+  }
+  volatile VALUE vkey, vmax;
+  rb_scan_args(argc, argv, "11", &vkey, &vmax);
+  vkey = StringValueEx(vkey);
+  const std::string_view key = GetStringView(vkey);
+  const int64_t capacity = GetInteger(vmax);
+  std::vector<std::string> values;
+  NativeFunction(sindex->concurrent, [&]() {
+      values = sindex->index->GetValues(key, capacity);
+    });
+  volatile VALUE vvalues = rb_ary_new2(values.size());
+  for (const auto& value : values) {
+    rb_ary_push(vvalues, MakeString(value, sindex->venc));
+  }
+  return vvalues;
+}
+
+// Implementation of Index#add.
+static VALUE index_add(VALUE vself, VALUE vkey, VALUE vvalue) {
+  StructIndex* sindex = nullptr;
+  Data_Get_Struct(vself, StructIndex, sindex);
+  if (sindex->index == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened index");
+  }
+  vkey = StringValueEx(vkey);
+  const std::string_view key = GetStringView(vkey);
+  vvalue = StringValueEx(vvalue);
+  const std::string_view value = GetStringView(vvalue);
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sindex->concurrent, [&]() {
+      status = sindex->index->Add(key, value);
+    });
+  return MakeStatusValue(std::move(status));
+}
+
+// Implementation of Index#remove.
+static VALUE index_remove(VALUE vself, VALUE vkey, VALUE vvalue) {
+  StructIndex* sindex = nullptr;
+  Data_Get_Struct(vself, StructIndex, sindex);
+  if (sindex->index == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened index");
+  }
+  vkey = StringValueEx(vkey);
+  const std::string_view key = GetStringView(vkey);
+  vvalue = StringValueEx(vvalue);
+  const std::string_view value = GetStringView(vvalue);
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sindex->concurrent, [&]() {
+      status = sindex->index->Remove(key, value);
+    });
+  return MakeStatusValue(std::move(status));
+}
+
+// Implementation of Index#count.
+static VALUE index_count(VALUE vself) {
+  StructIndex* sindex = nullptr;
+  Data_Get_Struct(vself, StructIndex, sindex);
+  if (sindex->index == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened index");
+  }
+  int64_t count = 0;
+  NativeFunction(sindex->concurrent, [&]() {
+      count = sindex->index->Count();
+    });
+  return LL2NUM(count);
+}
+
+// Implementation of Index#file_path.
+static VALUE index_file_path(VALUE vself) {
+  StructIndex* sindex = nullptr;
+  Data_Get_Struct(vself, StructIndex, sindex);
+  if (sindex->index == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened index");
+  }
+  std::string path;
+  NativeFunction(sindex->concurrent, [&]() {
+      path = sindex->index->GetFilePath();
+    });
+  return rb_str_new(path.data(), path.size());
+}
+
+// Implementation of Index#clear.
+static VALUE index_clear(VALUE vself) {
+  StructIndex* sindex = nullptr;
+  Data_Get_Struct(vself, StructIndex, sindex);
+  if (sindex->index == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened index");
+  }
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sindex->concurrent, [&]() {
+      status = sindex->index->Clear();
+    });
+  return MakeStatusValue(std::move(status));
+}
+
+// Implementation of Index#rebuild.
+static VALUE index_rebuild(VALUE vself) {
+  StructIndex* sindex = nullptr;
+  Data_Get_Struct(vself, StructIndex, sindex);
+  if (sindex->index == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened index");
+  }
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sindex->concurrent, [&]() {
+      status = sindex->index->Rebuild();
+    });
+  return MakeStatusValue(std::move(status));
+}
+
+// Implementation of Index#synchronize.
+static VALUE index_synchronize(VALUE vself, VALUE vhard) {
+  StructIndex* sindex = nullptr;
+  Data_Get_Struct(vself, StructIndex, sindex);
+  if (sindex->index == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened index");
+  }
+  const bool hard = RTEST(vhard);
+  tkrzw::Status status(tkrzw::Status::SUCCESS);
+  NativeFunction(sindex->concurrent, [&]() {
+      status = sindex->index->Synchronize(hard);
+    });
+  return MakeStatusValue(std::move(status));
+}
+
+// Implementation of Index#open?.
+static VALUE index_is_open(VALUE vself) {
+  StructIndex* sindex = nullptr;
+  Data_Get_Struct(vself, StructIndex, sindex);
+  return sindex->index == nullptr ? Qfalse : Qtrue;
+}
+
+// Implementation of Index#writable?.
+static VALUE index_is_writable(VALUE vself) {
+  StructIndex* sindex = nullptr;
+  Data_Get_Struct(vself, StructIndex, sindex);
+  if (sindex->index == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened index");
+  }
+  const bool writable = sindex->index->IsWritable();;
+  return writable ? Qtrue : Qfalse;
+}
+
+// Implementation of Index#make_iterator.
+static VALUE index_make_iterator(VALUE vself) {
+  return rb_class_new_instance(1, &vself, cls_indexiter);
+}
+
+// Implementation of Index#to_s.
+static VALUE index_to_s(VALUE vself) {
+  StructIndex* sindex = nullptr;
+  Data_Get_Struct(vself, StructIndex, sindex);
+  if (sindex->index == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened index");
+  }
+  std::string path = "-";
+  int64_t count = -1;
+  NativeFunction(sindex->concurrent, [&]() {
+      path = sindex->index->GetFilePath();
+      count = sindex->index->Count();
+    });
+  const std::string expr = tkrzw::StrCat(tkrzw::StrEscapeC(path, true), ":", count);
+  return rb_str_new(expr.data(), expr.size());
+}
+
+// Implementation of Index#to_i.
+static VALUE index_to_i(VALUE vself) {
+  StructIndex* sindex = nullptr;
+  Data_Get_Struct(vself, StructIndex, sindex);
+  if (sindex->index == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened index");
+  }
+  int64_t count = -1;
+  NativeFunction(sindex->concurrent, [&]() {
+      count = sindex->index->Count();
+    });
+  return LL2NUM(count);
+}
+
+// Implementation of Index#inspect.
+static VALUE index_inspect(VALUE vself) {
+  StructIndex* sindex = nullptr;
+  Data_Get_Struct(vself, StructIndex, sindex);
+  if (sindex->index == nullptr) {
+    return rb_str_new2("#<Tkrzw::Index:(not opened database)>");
+  }
+  std::string path = "-";
+  int64_t count = -1;
+  NativeFunction(sindex->concurrent, [&]() {
+      path = sindex->index->GetFilePath();
+      count = sindex->index->Count();
+    });
+  const std::string expr = tkrzw::StrCat(
+      "#<Tkrzw::Index:", tkrzw::StrEscapeC(path, true), ":", count, ">");
+  return rb_str_new(expr.data(), expr.size());
+}
+
+// Implementation of Index#each.
+static VALUE index_each(VALUE vself) {
+  StructIndex* sindex = nullptr;
+  Data_Get_Struct(vself, StructIndex, sindex);
+  if (sindex->index == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened index");
+  }
+  if (!rb_block_given_p()) {
+    rb_raise(rb_eArgError, "block is not given");
+  }
+  std::unique_ptr<tkrzw::PolyIndex::Iterator> iter;
+  NativeFunction(sindex->concurrent, [&]() {
+      iter = sindex->index->MakeIterator();
+      iter->First();
+    });
+  while (true) {
+    std::string key, value;
+    bool ok = false;
+    NativeFunction(sindex->concurrent, [&]() {
+        ok = iter->Get(&key, &value);
+      });
+    if (!ok) {
+      break;
+    }
+    volatile VALUE args =
+        rb_ary_new3(2, MakeString(key, sindex->venc), MakeString(value, sindex->venc));
+    int result = 0;
+    rb_protect(YieldToBlock, args, &result);
+    if (result != 0) {
+      rb_jump_tag(result);
+      break;
+    }
+    NativeFunction(sindex->concurrent, [&]() {
+        iter->Next();
+      });
+  }
+  return Qnil;
+}
+
+// Defines the Index class.
+static void DefineIndex() {
+  cls_index = rb_define_class_under(mod_tkrzw, "Index", rb_cObject);
+  rb_define_alloc_func(cls_index, index_new);
+  rb_define_private_method(cls_index, "initialize", (METHOD)index_initialize, 0);
+  rb_define_method(cls_index, "destruct", (METHOD)index_destruct, 0);
+  rb_define_method(cls_index, "open", (METHOD)index_open, -1);
+  rb_define_method(cls_index, "close", (METHOD)index_close, 0);
+  rb_define_method(cls_index, "include?", (METHOD)index_include, -1);
+  rb_define_method(cls_index, "get_values", (METHOD)index_get_values, -1);
+  rb_define_method(cls_index, "add", (METHOD)index_add, 2);
+  rb_define_method(cls_index, "remove", (METHOD)index_remove, 2);
+  rb_define_method(cls_index, "count", (METHOD)index_count, 0);
+  rb_define_method(cls_index, "file_path", (METHOD)index_file_path, 0);
+  rb_define_method(cls_index, "clear", (METHOD)index_clear, 0);
+  rb_define_method(cls_index, "rebuild", (METHOD)index_rebuild, 0);
+  rb_define_method(cls_index, "synchronize", (METHOD)index_synchronize, 1);
+  rb_define_method(cls_index, "open?", (METHOD)index_is_open, 0);
+  rb_define_method(cls_index, "writable?", (METHOD)index_is_writable, 0);
+  rb_define_method(cls_index, "make_iterator", (METHOD)index_make_iterator, 0);
+  rb_define_method(cls_index, "to_s", (METHOD)index_to_s, 0);
+  rb_define_method(cls_index, "to_i", (METHOD)index_to_i, 0);
+  rb_define_method(cls_index, "inspect", (METHOD)index_inspect, 0);
+  rb_define_method(cls_index, "each", (METHOD)index_each, 0);
+}
+
+// Implementation of IndexIterator#del.
+static void indexiter_del(void* ptr) {
+  StructIndexIter* siter = (StructIndexIter*)ptr;
+  siter->iter.reset(nullptr);
+  delete siter;
+}
+
+// Implementation of IndexIterator.new.
+static VALUE indexiter_new(VALUE cls) {
+  StructIndexIter* siter = new StructIndexIter;
+  return Data_Wrap_Struct(cls_indexiter, 0, indexiter_del, siter);
+}
+
+// Implementation of IndexIterator#initialize.
+static VALUE indexiter_initialize(VALUE vself, VALUE vindex) {
+  if (!rb_obj_is_instance_of(vindex, cls_index)) {
+    rb_raise(rb_eArgError, "#<Tkrzw::StatusException>");
+  }
+  StructIndex* sindex = nullptr;
+  Data_Get_Struct(vindex, StructIndex, sindex);
+  if (sindex->index == nullptr) {
+    rb_raise(rb_eRuntimeError, "not opened index");
+  }
+  StructIndexIter* siter = nullptr;
+  Data_Get_Struct(vself, StructIndexIter, siter);
+  siter->iter = sindex->index->MakeIterator();
+  siter->concurrent = sindex->concurrent;
+  siter->venc = sindex->venc;
+  return Qnil;
+}
+
+// Implementation of IndexIterator#destruct.
+static VALUE indexiter_destruct(VALUE vself) {
+  StructIndexIter* siter = nullptr;
+  Data_Get_Struct(vself, StructIndexIter, siter);
+  siter->iter.reset(nullptr);
+  return Qnil;
+}
+
+// Implementation of IndexIterator#first.
+static VALUE indexiter_first(VALUE vself) {
+  StructIndexIter* siter = nullptr;
+  Data_Get_Struct(vself, StructIndexIter, siter);
+  if (siter->iter == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed Iterator");
+  }
+  NativeFunction(siter->concurrent, [&]() {
+      siter->iter->First();
+    });
+  return Qnil;
+}
+
+// Implementation of IndexIterator#last.
+static VALUE indexiter_last(VALUE vself) {
+  StructIndexIter* siter = nullptr;
+  Data_Get_Struct(vself, StructIndexIter, siter);
+  if (siter->iter == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed Iterator");
+  }
+  NativeFunction(siter->concurrent, [&]() {
+      siter->iter->Last();
+    });
+  return Qnil;
+}
+
+// Implementation of IndexIterator#jump.
+static VALUE indexiter_jump(int argc, VALUE* argv, VALUE vself) {
+  StructIndexIter* siter = nullptr;
+  Data_Get_Struct(vself, StructIndexIter, siter);
+  if (siter->iter == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed Iterator");
+  }
+  volatile VALUE vkey, vvalue;
+  rb_scan_args(argc, argv, "11", &vkey, &vvalue);
+  vkey = StringValueEx(vkey);
+  vvalue = StringValueEx(vvalue);
+  const std::string_view key = GetStringView(vkey);
+  const std::string_view value = GetStringView(vvalue);
+  NativeFunction(siter->concurrent, [&]() {
+      siter->iter->Jump(key, value);
+    });
+  return Qnil;
+}
+
+// Implementation of IndexIterator#next.
+static VALUE indexiter_next(VALUE vself) {
+  StructIndexIter* siter = nullptr;
+  Data_Get_Struct(vself, StructIndexIter, siter);
+  if (siter->iter == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed Iterator");
+  }
+  NativeFunction(siter->concurrent, [&]() {
+      siter->iter->Next();
+    });
+  return Qnil;
+}
+
+// Implementation of IndexIterator#previous.
+static VALUE indexiter_previous(VALUE vself) {
+  StructIndexIter* siter = nullptr;
+  Data_Get_Struct(vself, StructIndexIter, siter);
+  if (siter->iter == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed Iterator");
+  }
+  NativeFunction(siter->concurrent, [&]() {
+      siter->iter->Previous();
+    });
+  return Qnil;
+}
+
+// Implementation of IndexIterator#get.
+static VALUE indexiter_get(VALUE vself) {
+  StructIndexIter* siter = nullptr;
+  Data_Get_Struct(vself, StructIndexIter, siter);
+  if (siter->iter == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed Iterator");
+  }
+  std::string key, value;
+  bool ok = false;
+  NativeFunction(siter->concurrent, [&]() {
+      ok = siter->iter->Get(&key, &value);
+    });
+  if (ok) {
+    volatile VALUE vary = rb_ary_new2(2);
+    rb_ary_push(vary, MakeString(key, siter->venc));
+    rb_ary_push(vary, MakeString(value, siter->venc));
+    return vary;
+  }
+  return Qnil;
+}
+
+// Implementation of IndexIterator#to_s.
+static VALUE indexiter_to_s(VALUE vself) {
+  StructIndexIter* siter = nullptr;
+  Data_Get_Struct(vself, StructIndexIter, siter);
+  if (siter->iter == nullptr) {
+    rb_raise(rb_eRuntimeError, "destructed Iterator");
+  }
+  std::string key;
+  bool ok = false;
+  NativeFunction(siter->concurrent, [&]() {
+      ok = siter->iter->Get(&key);
+    });
+  if (!ok) {
+    key = "(unlocated)";
+  }
+  const std::string& expr = tkrzw::StrEscapeC(key, true);
+  return rb_str_new(expr.data(), expr.size());
+}
+
+// Implementation of IndexIterator#inspect.
+static VALUE indexiter_inspect(VALUE vself) {
+  StructIndexIter* siter = nullptr;
+  Data_Get_Struct(vself, StructIndexIter, siter);
+  if (siter->iter == nullptr) {
+    return rb_str_new2("#<Tkrzw::IndexIterator:(destructed object)>");
+  }
+  std::string key;
+  bool ok = false;
+  NativeFunction(siter->concurrent, [&]() {
+      ok = siter->iter->Get(&key);
+    });
+  if (!ok) {
+    key = "(unlocated)";
+  }
+  const std::string& expr =
+      tkrzw::StrCat("#<Tkrzw::IndexIterator:", tkrzw::StrEscapeC(key, true), ">");
+  return rb_str_new(expr.data(), expr.size());
+}
+
+// Defines the IndexIterator class.
+static void DefineIndexIterator() {
+  cls_indexiter = rb_define_class_under(mod_tkrzw, "IndexIterator", rb_cObject);
+  rb_define_alloc_func(cls_indexiter, indexiter_new);
+  rb_define_private_method(cls_indexiter, "initialize", (METHOD)indexiter_initialize, 1);
+  rb_define_method(cls_indexiter, "destruct", (METHOD)indexiter_destruct, 0);
+  rb_define_method(cls_indexiter, "first", (METHOD)indexiter_first, 0);
+  rb_define_method(cls_indexiter, "last", (METHOD)indexiter_last, 0);
+  rb_define_method(cls_indexiter, "jump", (METHOD)indexiter_jump, -1);
+  rb_define_method(cls_indexiter, "next", (METHOD)indexiter_next, 0);
+  rb_define_method(cls_indexiter, "previous", (METHOD)indexiter_previous, 0);
+  rb_define_method(cls_indexiter, "get", (METHOD)indexiter_get, 0);
+  rb_define_method(cls_indexiter, "to_s", (METHOD)indexiter_to_s, 0);
+  rb_define_method(cls_indexiter, "inspect", (METHOD)indexiter_inspect, 0);
+}
+
 // Entry point of the library.
 void Init_tkrzw() {
   DefineModule();
@@ -3326,6 +3917,8 @@ void Init_tkrzw() {
   DefineIterator();
   DefineAsyncDBM();
   DefineFile();
+  DefineIndex();
+  DefineIndexIterator();
 }
 
 }  // extern "C"

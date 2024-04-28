@@ -41,8 +41,7 @@ dbm.each do |key, value|
   p key + ": " + value
 end
 
-# Closes and the database and releases the resources.
+# Closes and the database.
 dbm.close
-dbm.destruct
 
 # END OF FILE

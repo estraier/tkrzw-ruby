@@ -19,6 +19,18 @@ Tkrzw is a library implementing DBM with various algorithms.  It features high d
 
 Whereas Tkrzw is C++ library, this package provides its Ruby interface.  All above data structures are available via one adapter class "DBM". Read the {homepage}[https://dbmx.net/tkrzw/] for details.
 
+The following classes are mainly used.
+
+- Tkrzw::Utility : Library utilities.
+- Tkrzw::Status : Status of operations
+- Tkrzw::DBM : Polymorphic database manager
+- Tkrzw::Iterator : Iterator for each record
+- Tkrzw::Future : Future containing a status object and extra data
+- Tkrzw::AsyncDBM : Asynchronous database manager adapter
+- Tkrzw::File : Generic file implementation
+- Tkrzw::Index : Secondary index
+- Tkrzw::IndexIterator : Iterator for each record of the secondary index
+
 DBM stores key-value pairs of strings.  You can specify any type of objects as keys and values if they can be converted into strings.  When you retreive keys and values, they are always represented as strings.
 
 The module file is "tkrzw", which defines the module "Tkrzw".
@@ -70,9 +82,8 @@ The following code is a typical example to use a database.  A DBM object can be 
     p key + ": " + value
   end
    
-  # Closes and the database and releases the resources.
+  # Closes and the database.
   dbm.close
-  dbm.destruct
 
 The following code is a more complex example.  You should use "ensure" clauses to destruct instances of DBM and Iterator, in order to release unused resources.  Even if the database is not closed, the destructor closes it implicitly.  The method "or_die" throws an exception on failure so it is useful for checking errors.
 
@@ -247,3 +258,50 @@ The following code uses process, process_multi, and process_each functions which
   
   # Closes the database.
   dbm.close
+
+The following code is an example to use a secondary index, which is useful to organize records by non-primary keys.
+
+  require 'tkrzw'
+  
+  # Opens the incex.
+  index = Tkrzw::Index.new
+  index.open("casket.tkt", true, truncate: true, num_buckets: 100).or_die
+  
+  # Adds records to the index.
+  # The key is a division name and the value is person name.
+  index.add("general", "anne").or_die
+  index.add("general", "matthew").or_die
+  index.add("general", "marilla").or_die
+  index.add("sales", "gilbert").or_die
+  
+  # Anne moves to the sales division.
+  index.remove("general", "anne").or_die
+  index.add("sales", "anne").or_die
+  
+  # Prints all members for each division.
+  ["general", "sales"].each do |division|
+    puts(division)
+    members = index.get_values(division)
+    members.each do |member|
+      puts(" -- " + member)
+    end
+  end
+  
+  # Prints every record by iterator.
+  iter = index.make_iterator
+  iter.first
+  loop do
+    record = iter.get
+    break if not record
+    puts(record[0] + ": " + record[1])
+    iter.next
+  end
+  iter.destruct
+  
+  # Prints every record by the iterator block
+  index.each do |key, value|
+    puts(key + ": " + value)
+  end
+  
+  # Closes the index.
+  index.close.or_die
