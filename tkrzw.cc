@@ -369,6 +369,36 @@ static VALUE util_edit_distance_lev(int argc, VALUE* argv, VALUE vself) {
   return INT2FIX(rv);
 }
 
+// Implementation of Utility.serialize_int.
+static VALUE util_serialize_int(VALUE vself, VALUE vnum) {
+  const int64_t num = GetInteger(vnum);
+  std::string str = tkrzw::IntToStrBigEndian(num);
+  return rb_str_new(str.data(), str.size());
+}
+
+// Implementation of Utility.deserialize_int.
+static VALUE util_deserialize_int(VALUE vself, VALUE vdata) {
+  vdata = StringValueEx(vdata);
+  std::string_view data = GetStringView(vdata);
+  const int64_t num = tkrzw::StrToIntBigEndian(data);
+  return LL2NUM(num);
+}
+
+// Implementation of Utility.serialize_float.
+static VALUE util_serialize_float(VALUE vself, VALUE vnum) {
+  const double num = GetFloat(vnum);
+  std::string str = tkrzw::FloatToStrBigEndian(num);
+  return rb_str_new(str.data(), str.size());
+}
+
+// Implementation of Utility.deserialize_float.
+static VALUE util_deserialize_float(VALUE vself, VALUE vdata) {
+  vdata = StringValueEx(vdata);
+  std::string_view data = GetStringView(vdata);
+  const double num = tkrzw::StrToFloatBigEndian(data);
+  return DBL2NUM(num);
+}
+
 // Defines the Utility class.
 static void DefineUtility() {
   cls_util = rb_define_class_under(mod_tkrzw, "Utility", rb_cObject);
@@ -388,6 +418,10 @@ static void DefineUtility() {
   rb_define_singleton_method(cls_util, "primary_hash", (METHOD)util_primary_hash, -1);
   rb_define_singleton_method(cls_util, "secondary_hash", (METHOD)util_secondary_hash, -1);
   rb_define_singleton_method(cls_util, "edit_distance_lev", (METHOD)util_edit_distance_lev, -1);
+  rb_define_singleton_method(cls_util, "serialize_int", (METHOD)util_serialize_int, 1);
+  rb_define_singleton_method(cls_util, "deserialize_int", (METHOD)util_deserialize_int, 1);
+  rb_define_singleton_method(cls_util, "serialize_float", (METHOD)util_serialize_float, 1);
+  rb_define_singleton_method(cls_util, "deserialize_float", (METHOD)util_deserialize_float, 1);
 }
 
 // Implementation of Status#del.
@@ -1639,7 +1673,6 @@ static VALUE dbm_timestamp(VALUE vself) {
     rb_raise(rb_eRuntimeError, "not opened database");
   }
   double timestamp = 0;
-
   NativeFunction(sdbm->concurrent, [&]() {
       timestamp = sdbm->dbm->GetTimestampSimple();
     });

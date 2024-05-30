@@ -48,6 +48,12 @@ class TkrzwTest < Test::Unit::TestCase
     assert_equal(1, Utility.edit_distance_lev("ac", "abc"))
     assert_equal(3, Utility.edit_distance_lev("あいう", "あう"))
     assert_equal(1, Utility.edit_distance_lev("あいう", "あう", true))
+    int_seq = Utility.serialize_int(-123456)
+    assert_equal(8, int_seq.length)
+    assert_equal(-123456, Utility.deserialize_int(int_seq))
+    float_seq = Utility.serialize_float(-123.456)
+    assert_equal(8, float_seq.length)
+    assert_equal(-123.456, Utility.deserialize_float(float_seq))
   end
 
   # Status tests.
