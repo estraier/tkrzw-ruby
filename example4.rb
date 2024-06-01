@@ -1,7 +1,7 @@
 #! /usr/bin/ruby -I. -w
 # -*- coding: utf-8 -*-
 #--------------------------------------------------------------------------------------------------
-# Example for process methods
+# Example for the asynchronous API
 #
 # Copyright 2020 Google LLC
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file
@@ -15,65 +15,36 @@
 
 require 'tkrzw'
 
-# Opens the database.
 dbm = Tkrzw::DBM.new
-dbm.open("casket.tkh", true, truncate: true, num_buckets: 1000)
+dbm.open("casket.tkh", true, truncate: true, num_buckets: 100)
 
-# Sets records with blocks.
-dbm.process("doc-1", true) {|key, value| "Tokyo is the capital city of Japan."}
-dbm.process("doc-2", true) {|key, value| "Is she living in Tokyo, Japan?"}
-dbm.process("doc-3", true) {|key, value| "She must leave Tokyo!"}
+# Prepares the asynchronous adapter with 4 worker threads.
+async = Tkrzw::AsyncDBM.new(dbm, 4)
 
-# Lowers record values.
-def lower(key, value)
-  # If no matching record, nil is given as the value.
-  return nil if not value
-  # Sets the new value.
-  return value.downcase
+# Executes the Set method asynchronously.
+future = async.set("hello", "world")
+# Does something in the foreground.
+until future.wait(0)
+  puts("Setting a record")
 end
-dbm.process("doc-1", true) {|k, v| lower(k, v)}
-dbm.process("doc-2", true) {|k, v| lower(k, v)}
-dbm.process("doc-3", true) {|k, v| lower(k, v)}
-dbm.process("non-existent", true){|k, v| lower(k, v)}
-
-# If you don't update the record, set the second parameter to false.
-dbm.process("doc-3", false) {|k, v| p k, v}
-
-# Adds multiple records at once.
-records = {"doc-4"=>"Tokyo Go!", "doc-5"=>"Japan Go!"}
-dbm.process_multi(["doc-4", "doc-5"], true) {|k, v|
-  records[k]
-}
-
-# Modifies multiple records at once.
-dbm.process_multi(["doc-4", "doc-5"], true) {|k, v| lower(k, v)}
-
-# Checks the whole content.
-# This uses an external iterator and is relavively slow.
-dbm.each do |key, value|
-  p key + ": " + value
+# Checks the result after awaiting the Set operation.
+status = future.get
+if status != Tkrzw::Status::SUCCESS
+  puts("ERROR: " + status.to_s)
 end
 
-# Function for word counting.
-def word_counter(key, value, counts)
-  return if not key
-  value.split(/\W+/).each {|word|
-    counts[word] = (counts[word] or 0) + 1
-  }
+# Executes the Get method asynchronously.
+future = async.get("hello")
+# Does something in the foreground.
+puts("Getting a record")
+# Awaits the operation and get the result.
+status, value = future.get()
+if status == Tkrzw::Status::SUCCESS
+  puts("VALUE: " + value)
 end
-word_counts = {}
 
-# The parameter should be false if the value is not updated.
-dbm.process_each(false) {|k, v| word_counter(k, v, word_counts)}
-p word_counts
-
-# Returning False by the callbacks removes the record.
-dbm.process("doc-1", true) {|k, v| false}
-p dbm.count
-dbm.process_multi(["doc-2", "doc-3"], true) {|k, v| false}
-p dbm.count
-dbm.process_each(true) {|k, v| false}
-p dbm.count
+# Releases the asynchronous adapter.
+async.destruct
 
 # Closes the database.
 dbm.close

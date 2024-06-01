@@ -1,7 +1,7 @@
 #! /usr/bin/ruby -I. -w
 # -*- coding: utf-8 -*-
 #--------------------------------------------------------------------------------------------------
-# Example for secondary index
+# Example for process methods
 #
 # Copyright 2020 Google LLC
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file
@@ -15,47 +15,67 @@
 
 require 'tkrzw'
 
-# Opens the incex.
-index = Tkrzw::Index.new
-index.open("casket.tkt", true, truncate: true, num_buckets: 100).or_die
+# Opens the database.
+dbm = Tkrzw::DBM.new
+dbm.open("casket.tkh", true, truncate: true, num_buckets: 1000)
 
-# Adds records to the index.
-# The key is a division name and the value is person name.
-index.add("general", "anne").or_die
-index.add("general", "matthew").or_die
-index.add("general", "marilla").or_die
-index.add("sales", "gilbert").or_die
+# Sets records with blocks.
+dbm.process("doc-1", true) {|key, value| "Tokyo is the capital city of Japan."}
+dbm.process("doc-2", true) {|key, value| "Is she living in Tokyo, Japan?"}
+dbm.process("doc-3", true) {|key, value| "She must leave Tokyo!"}
 
-# Anne moves to the sales division.
-index.remove("general", "anne").or_die
-index.add("sales", "anne").or_die
+# Lowers record values.
+def lower(key, value)
+  # If no matching record, nil is given as the value.
+  return nil if not value
+  # Sets the new value.
+  return value.downcase
+end
+dbm.process("doc-1", true) {|k, v| lower(k, v)}
+dbm.process("doc-2", true) {|k, v| lower(k, v)}
+dbm.process("doc-3", true) {|k, v| lower(k, v)}
+dbm.process("non-existent", true){|k, v| lower(k, v)}
 
-# Prints all members for each division.
-["general", "sales"].each do |division|
-  puts(division)
-  members = index.get_values(division)
-  members.each do |member|
-    puts(" -- " + member)
-  end
+# If you don't update the record, set the second parameter to false.
+dbm.process("doc-3", false) {|k, v| p k, v}
+
+# Adds multiple records at once.
+records = {"doc-4"=>"Tokyo Go!", "doc-5"=>"Japan Go!"}
+dbm.process_multi(["doc-4", "doc-5"], true) {|k, v|
+  records[k]
+}
+
+# Modifies multiple records at once.
+dbm.process_multi(["doc-4", "doc-5"], true) {|k, v| lower(k, v)}
+
+# Checks the whole content.
+# This uses an external iterator and is relavively slow.
+dbm.each do |key, value|
+  p key + ": " + value
 end
 
-# Prints every record by iterator.
-iter = index.make_iterator
-iter.first
-loop do
-  record = iter.get
-  break if not record
-  puts(record[0] + ": " + record[1])
-  iter.next
+# Function for word counting.
+def word_counter(key, value, counts)
+  return if not key
+  value.split(/\W+/).each {|word|
+    counts[word] = (counts[word] or 0) + 1
+  }
 end
-iter.destruct
+word_counts = {}
 
-# Prints every record by the iterator block
-index.each do |key, value|
-  puts(key + ": " + value)
-end
+# The parameter should be false if the value is not updated.
+dbm.process_each(false) {|k, v| word_counter(k, v, word_counts)}
+p word_counts
 
-# Closes the index.
-index.close.or_die
+# Returning False by the callbacks removes the record.
+dbm.process("doc-1", true) {|k, v| false}
+p dbm.count
+dbm.process_multi(["doc-2", "doc-3"], true) {|k, v| false}
+p dbm.count
+dbm.process_each(true) {|k, v| false}
+p dbm.count
+
+# Closes the database.
+dbm.close
 
 # END OF FILE
