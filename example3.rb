@@ -116,6 +116,40 @@ iter.destruct
 dbm.close.or_die
 dbm.destruct
 
+# Opens a new database with the big-endian signed integers comparator.
+dbm = Tkrzw::DBM.new
+open_params = {
+  truncate: true,
+  key_comparator: "SignedBigEndian",
+}
+status = dbm.open("casket.tkt", true, open_params).or_die
+
+# Sets records with the key being a big-endian binary of a signed integer.
+# e.g: "\x00\x00\x00\x00\x00\x00\x00\x31" -> "hop"
+dbm.set(Tkrzw::Utility::serialize_int(-1), "hop").or_die
+dbm.set(Tkrzw::Utility::serialize_int(-256), "step").or_die
+dbm.set(Tkrzw::Utility::serialize_int(-32), "jump").or_die
+
+# Gets records with the key being a big-endian binary of a signed integer.
+p dbm.get(Tkrzw::Utility::serialize_int(-1))
+p dbm.get(Tkrzw::Utility::serialize_int(-256))
+p dbm.get(Tkrzw::Utility::serialize_int(-32))
+
+# Lists up all records, restoring keys into signed integers.
+iter = dbm.make_iterator
+iter.first
+while true do
+  record = iter.get(status)
+  break if not record
+  printf("%d: %s\n", Tkrzw::Utility::deserialize_int(record[0]), record[1])
+  iter.next
+end
+iter.destruct
+
+# Closes the database.
+dbm.close.or_die
+dbm.destruct
+
 # Opens a new database with the big-endian floating-point numbers comparator.
 dbm = Tkrzw::DBM.new
 open_params = {
@@ -130,18 +164,18 @@ dbm.set(Tkrzw::Utility::serialize_float(1.5), "hop").or_die
 dbm.set(Tkrzw::Utility::serialize_float(256.5), "step").or_die
 dbm.set(Tkrzw::Utility::serialize_float(32.5), "jump").or_die
 
-# Gets records with the key being a decimal string of an integer.
-p dbm.get(Tkrzw::Utility::serialize_int(1))
-p dbm.get(Tkrzw::Utility::serialize_int(256))
-p dbm.get(Tkrzw::Utility::serialize_int(32))
+# Gets records with the key being a big-endian binary of a floating-point number.
+p dbm.get(Tkrzw::Utility::serialize_float(1.5))
+p dbm.get(Tkrzw::Utility::serialize_float(256.5))
+p dbm.get(Tkrzw::Utility::serialize_float(32.5))
 
-# Lists up all records, restoring keys into integers.
+# Lists up all records, restoring keys into floating-point numbers.
 iter = dbm.make_iterator
 iter.first
 while true do
   record = iter.get(status)
   break if not record
-  printf("%d: %s\n", Tkrzw::Utility::deserialize_int(record[0]), record[1])
+  printf("%f: %s\n", Tkrzw::Utility::deserialize_float(record[0]), record[1])
   iter.next
 end
 iter.destruct
